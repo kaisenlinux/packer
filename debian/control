@@ -1,0 +1,16 @@
+Source: packer
+Section: utils
+Priority: optional
+Maintainer: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
+Build-Depends: debhelper-compat (= 13), dh-golang, golang-go (>= 1.17)
+Standards-Version: 4.6.0
+Homepage: https://www.packer.io/
+Vcs-Browser: https://gitlab.com/kaisenlinux/packages/packer
+Vcs-Git: https://gitlab.com/kaisenlinux/packages/packer.git
+Rules-Requires-Root: no
+XS-Go-Import-Path: github.com/hashicorp/packer
+
+Package: packer
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, golang-go (>= 1.17)
+Description: Tool for creating identical machine images for multiple platforms from a single source configuration
