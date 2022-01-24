@@ -1,3 +1,9 @@
+packer (1.7.9-1kaisen) kaisen-packages; urgency=medium
+
+  * Import 1.7.9 version
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Mon, 24 Jan 2022 00:09:14 +0100
+
 packer (1.7.8-1kaisen) kaisen-packages; urgency=medium
 
   * Complete repackaging (remove Debian packaging)

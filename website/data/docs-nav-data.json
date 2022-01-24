@@ -726,6 +726,11 @@
           {
             "title": "Image",
             "path": "datasources/hcp/hcp-packer-image"
+          },
+          {
+            "title": "Image-Deprecated",
+            "path": "datasources/hcp/packer-image-iteration",
+            "hidden": true
           }
         ]
       }
@@ -810,6 +815,10 @@
     ]
   },
   {
+    "title": "External Plugins",
+    "href": "/plugins"
+  },
+  {
     "divider": true
   },
   {
@@ -856,10 +865,14 @@
         ]
       },
       {
-        "title": "Packer Integration Program",
-        "path": "plugins/packer-integration-program"
+        "title": "HCP Packer Support",
+        "path": "plugins/hcp-support"
       }
     ]
+  },
+  {
+    "title": "Packer Integration Program",
+    "path": "packer-integration-program"
   },
   {
     "divider": true

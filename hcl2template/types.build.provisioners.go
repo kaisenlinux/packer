@@ -74,7 +74,7 @@ func (p *ProvisionerBlock) String() string {
 	return fmt.Sprintf(buildProvisionerLabel+"-block %q %q", p.PType, p.PName)
 }
 
-func (p *Parser) decodeProvisioner(block *hcl.Block, cfg *PackerConfig) (*ProvisionerBlock, hcl.Diagnostics) {
+func (p *Parser) decodeProvisioner(block *hcl.Block, ectx *hcl.EvalContext) (*ProvisionerBlock, hcl.Diagnostics) {
 	var b struct {
 		Name        string    `hcl:"name,optional"`
 		PauseBefore string    `hcl:"pause_before,optional"`
@@ -85,7 +85,7 @@ func (p *Parser) decodeProvisioner(block *hcl.Block, cfg *PackerConfig) (*Provis
 		Override    cty.Value `hcl:"override,optional"`
 		Rest        hcl.Body  `hcl:",remain"`
 	}
-	diags := gohcl.DecodeBody(block.Body, cfg.EvalContext(BuildContext, nil), &b)
+	diags := gohcl.DecodeBody(block.Body, ectx, &b)
 	if diags.HasErrors() {
 		return nil, diags
 	}
@@ -122,6 +122,7 @@ func (p *Parser) decodeProvisioner(block *hcl.Block, cfg *PackerConfig) (*Provis
 				Summary:  "Failed to parse pause_before duration",
 				Severity: hcl.DiagError,
 				Detail:   err.Error(),
+				Subject:  &block.DefRange,
 			})
 		}
 		provisioner.PauseBefore = pauseBefore
@@ -131,8 +132,10 @@ func (p *Parser) decodeProvisioner(block *hcl.Block, cfg *PackerConfig) (*Provis
 		timeout, err := time.ParseDuration(b.Timeout)
 		if err != nil {
 			return nil, append(diags, &hcl.Diagnostic{
-				Summary: "Failed to parse timeout duration",
-				Detail:  err.Error(),
+				Summary:  "Failed to parse timeout duration",
+				Severity: hcl.DiagError,
+				Detail:   err.Error(),
+				Subject:  &block.DefRange,
 			})
 		}
 		provisioner.Timeout = timeout
