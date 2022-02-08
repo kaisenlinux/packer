@@ -1,3 +1,9 @@
+packer (1.7.10-1kaisen) kaisen-packages; urgency=medium
+
+  * Import 1.7.10 version
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Tue, 08 Feb 2022 11:10:34 +0100
+
 packer (1.7.9-1kaisen) kaisen-packages; urgency=medium
 
   * Import 1.7.9 version
