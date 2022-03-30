@@ -1,2 +1,3 @@
 contrib/zsh-completion/_packer usr/share/zsh/vendor-completions/
 obj-x86_64-linux-gnu/bin/packer usr/bin/
+debian/packer.png usr/share/pixmaps/
