@@ -2,15 +2,22 @@
 
 export GOPATH=$(CURDIR)/obj-x86_64-linux-gnu
 export GOBIN=$(CURDIR)/obj-x86_64-linux-gnu/bin
+export GO111MODULE=on
 
 %:
 	dh $@ --buildsystem=golang
 
 override_dh_auto_build:
-	go install github.com/hashicorp/packer@latest
+	make version
+	make releasebin
 
 override_dh_auto_test:
 	go test
 
 override_dh_auto_install:
-	dh_auto_install -- --no-source
+	mkdir -p $(CURDIR)/debian/packer/usr/bin
+	cp -f $(CURDIR)/obj-x86_64-linux-gnu/bin/packer $(CURDIR)/debian/packer/usr/bin
+	mkdir -p $(CURDIR)/debian/packer/usr/share/zsh/vendor-completions
+	cp -rf $(CURDIR)/contrib/zsh-completion/_packer $(CURDIR)/debian/packer/usr/share/zsh/vendor-completions
+	mkdir -p $(CURDIR)/debian/packer/usr/share/pixmaps
+	cp -f $(CURDIR)/debian/packer.png $(CURDIR)/debian/packer/usr/share/pixmaps

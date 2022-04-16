@@ -1,3 +1,10 @@
+packer (1.8.0-2kaisen) kaisen-packages; urgency=medium
+
+  * Improve a lot the packaging
+  * Added quilt patch to remove the .git folder dependancies
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Fri, 15 Apr 2022 21:36:32 +0100
+
 packer (1.8.0-1kaisen) kaisen-packages; urgency=medium
 
   * Use go install instead of go get to build packer

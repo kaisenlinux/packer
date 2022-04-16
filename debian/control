@@ -12,5 +12,5 @@ XS-Go-Import-Path: github.com/hashicorp/packer
 
 Package: packer
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, golang-go (>= 1.17)
+Depends: ${misc:Depends}, golang-go (>= 1.17)
 Description: Tool for creating identical machine images for multiple platforms from a single source configuration
