@@ -1,7 +1,7 @@
 Author: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
 
---- packer-1.8.0.orig/Makefile
-+++ packer-1.8.0/Makefile
+--- packer-1.8.1.orig/Makefile
++++ packer-1.8.1/Makefile
 @@ -5,9 +5,9 @@ VET?=$(shell go list ./...)
  ACC_TEST_BUILDERS?=all
  ACC_TEST_PROVISIONERS?=all
@@ -14,7 +14,7 @@ Author: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
  GOOS=$(shell go env GOOS)
  GOARCH=$(shell go env GOARCH)
  GOPATH=$(shell go env GOPATH)
-@@ -15,12 +15,12 @@ GOPATH=$(shell go env GOPATH)
+@@ -15,9 +15,9 @@ GOPATH=$(shell go env GOPATH)
  EXECUTABLE_FILES=$(shell find . -type f -executable | egrep -v '^\./(website/[vendor|tmp]|vendor/|\.git|bin/|scripts/|pkg/)' | egrep -v '.*(\.sh|\.bats|\.git)' | egrep -v './provisioner/(ansible|inspec)/test-fixtures/exit1')
  
  # Get the git commit
@@ -26,15 +26,4 @@ Author: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
 +#GIT_IMPORT=github.com/hashicorp/packer/version
  UNAME_S := $(shell uname -s)
  LDFLAGS=-s -w
--GOLDFLAGS=-X $(GIT_IMPORT).GitCommit=$(GIT_COMMIT)$(GIT_DIRTY) $(LDFLAGS)
-+#GOLDFLAGS=-X $(GIT_IMPORT).GitCommit=$(GIT_COMMIT)$(GIT_DIRTY) $(LDFLAGS)
- 
- export GOLDFLAGS
- 
-@@ -203,4 +203,4 @@ help:
- 
- # This is used for release builds by .github/workflows/build.yml
- version:
--	@$(CURDIR)/scripts/version.sh version/version.go
-\ No newline at end of file
-+	@$(CURDIR)/scripts/version.sh version/version.go
+ GOLDFLAGS=-X $(GIT_IMPORT).GitCommit=$(GIT_COMMIT)$(GIT_DIRTY) $(LDFLAGS)
