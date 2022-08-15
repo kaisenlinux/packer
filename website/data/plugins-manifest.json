@@ -67,8 +67,8 @@
   {
     "title": "DigitalOcean",
     "path": "digitalocean",
-    "repo": "hashicorp/packer-plugin-digitalocean",
-    "pluginTier": "community",
+    "repo": "digitalocean/packer-plugin-digitalocean",
+    "pluginTier": "verified",
     "version": "latest",
     "isHcpPackerReady": true
   },
@@ -94,6 +94,14 @@
     "isHcpPackerReady": true
   },
   {
+    "title": "Gridscale",
+    "path": "gridscale",
+    "repo": "gridscale/packer-plugin-gridscale",
+    "version": "latest",
+    "pluginTier": "verified",
+    "isHcpPackerReady": false
+  },
+  {
     "title": "HashiCups",
     "path": "hashicups",
     "repo": "hashicorp/packer-plugin-hashicups",
@@ -106,14 +114,6 @@
     "repo": "hashicorp/packer-plugin-hcloud",
     "version": "latest",
     "pluginTier": "community"
-  },
-  {
-    "title": "HuaweiCloud",
-    "path": "huaweicloud",
-    "repo": "huaweicloud/packer-plugin-huaweicloud",
-    "version": "v0.4.0",
-    "pluginTier": "community",
-    "sourceBranch": "master"
   },
   {
     "title": "HyperOne",
@@ -291,7 +291,8 @@
     "repo": "UpCloudLtd/packer-plugin-upcloud",
     "version": "latest",
     "pluginTier": "verified",
-    "sourceBranch": "master"
+    "sourceBranch": "master",
+    "isHcpPackerReady": true
   },
   {
     "title": "Vagrant",

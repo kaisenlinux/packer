@@ -21,10 +21,10 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/go-version v1.4.0
-	github.com/hashicorp/hcl/v2 v2.12.0
-	github.com/hashicorp/hcp-sdk-go v0.19.0
-	github.com/hashicorp/packer-plugin-amazon v1.1.0
-	github.com/hashicorp/packer-plugin-sdk v0.3.0
+	github.com/hashicorp/hcl/v2 v2.13.0
+	github.com/hashicorp/hcp-sdk-go v0.20.1-0.20220726131832-34fbcf69a746
+	github.com/hashicorp/packer-plugin-amazon v1.1.2
+	github.com/hashicorp/packer-plugin-sdk v0.3.1
 	github.com/jehiah/go-strftime v0.0.0-20171201141054-1d33003b3869
 	github.com/klauspost/compress v1.13.5 // indirect
 	github.com/klauspost/pgzip v1.2.5
@@ -46,7 +46,7 @@ require (
 	github.com/ulikunitz/xz v0.5.10
 	github.com/zclconf/go-cty v1.10.0
 	github.com/zclconf/go-cty-yaml v1.0.1
-	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f // indirect
+	golang.org/x/crypto v0.0.0-20220517005047-85d78b3ac167 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f
 	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
@@ -60,28 +60,27 @@ require (
 )
 
 require (
+	github.com/digitalocean/packer-plugin-digitalocean v1.0.8
 	github.com/hashicorp/packer-plugin-alicloud v1.0.2
-	github.com/hashicorp/packer-plugin-ansible v1.0.2
-	github.com/hashicorp/packer-plugin-azure v1.1.0
+	github.com/hashicorp/packer-plugin-ansible v1.0.3
+	github.com/hashicorp/packer-plugin-azure v1.3.0
 	github.com/hashicorp/packer-plugin-chef v1.0.2
 	github.com/hashicorp/packer-plugin-cloudstack v1.0.1
 	github.com/hashicorp/packer-plugin-converge v1.0.1
-	github.com/hashicorp/packer-plugin-digitalocean v1.0.6
-	github.com/hashicorp/packer-plugin-docker v1.0.5
-	github.com/hashicorp/packer-plugin-googlecompute v1.0.13
+	github.com/hashicorp/packer-plugin-docker v1.0.7
+	github.com/hashicorp/packer-plugin-googlecompute v1.0.14
 	github.com/hashicorp/packer-plugin-hcloud v1.0.4
 	github.com/hashicorp/packer-plugin-hyperone v1.0.1
 	github.com/hashicorp/packer-plugin-hyperv v1.0.4
 	github.com/hashicorp/packer-plugin-inspec v1.0.0
 	github.com/hashicorp/packer-plugin-jdcloud v1.0.1
 	github.com/hashicorp/packer-plugin-linode v1.0.3
-	github.com/hashicorp/packer-plugin-lxc v1.0.1
+	github.com/hashicorp/packer-plugin-lxc v1.0.2
 	github.com/hashicorp/packer-plugin-lxd v1.0.1
 	github.com/hashicorp/packer-plugin-ncloud v1.0.3
 	github.com/hashicorp/packer-plugin-oneandone v1.0.1
 	github.com/hashicorp/packer-plugin-openstack v1.0.1
 	github.com/hashicorp/packer-plugin-oracle v1.0.2
-	github.com/hashicorp/packer-plugin-outscale v1.0.2
 	github.com/hashicorp/packer-plugin-parallels v1.0.3
 	github.com/hashicorp/packer-plugin-profitbricks v1.0.2
 	github.com/hashicorp/packer-plugin-proxmox v1.0.8
@@ -89,14 +88,13 @@ require (
 	github.com/hashicorp/packer-plugin-qemu v1.0.5
 	github.com/hashicorp/packer-plugin-salt v1.0.0
 	github.com/hashicorp/packer-plugin-tencentcloud v1.0.5
-	github.com/hashicorp/packer-plugin-triton v1.0.1
+	github.com/hashicorp/packer-plugin-triton v1.0.2
 	github.com/hashicorp/packer-plugin-ucloud v1.0.1
 	github.com/hashicorp/packer-plugin-vagrant v1.0.3
 	github.com/hashicorp/packer-plugin-virtualbox v1.0.4
 	github.com/hashicorp/packer-plugin-vmware v1.0.7
-	github.com/hashicorp/packer-plugin-vsphere v1.0.5
-	github.com/hashicorp/packer-plugin-yandex v1.1.1
-	github.com/scaleway/packer-plugin-scaleway v1.0.4
+	github.com/hashicorp/packer-plugin-vsphere v1.0.7
+	github.com/hashicorp/packer-plugin-yandex v1.1.2
 )
 
 require (
@@ -162,7 +160,6 @@ require (
 	github.com/go-openapi/strfmt v0.20.0 // indirect
 	github.com/go-openapi/swag v0.19.14 // indirect
 	github.com/go-openapi/validate v0.20.2 // indirect
-	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible // indirect
 	github.com/go-resty/resty/v2 v2.6.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
@@ -228,13 +225,11 @@ require (
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/oracle/oci-go-sdk/v36 v36.2.0 // indirect
-	github.com/outscale/osc-sdk-go v1.11.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/profitbricks/profitbricks-sdk-go v4.0.2+incompatible // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
-	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.7 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/sirupsen/logrus v1.4.2 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.367 // indirect
@@ -245,7 +240,7 @@ require (
 	github.com/ucloud/ucloud-sdk-go v0.20.2 // indirect
 	github.com/ufilesdk-dev/ufile-gosdk v1.0.1 // indirect
 	github.com/ugorji/go/codec v1.2.6 // indirect
-	github.com/vmware/govmomi v0.26.0 // indirect
+	github.com/vmware/govmomi v0.26.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
 	github.com/yandex-cloud/go-genproto v0.0.0-20211202135052-789603780fb2 // indirect
 	github.com/yandex-cloud/go-sdk v0.0.0-20211206101223-7c4e7926bf53 // indirect
