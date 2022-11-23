@@ -7,7 +7,7 @@
     "version": "latest"
   },
   {
-    "title": "Alicloud",
+    "title": "Alibaba Cloud",
     "path": "alicloud",
     "repo": "hashicorp/packer-plugin-alicloud",
     "pluginTier": "community",
@@ -18,7 +18,7 @@
     "path": "anka",
     "repo": "veertuinc/packer-plugin-veertu-anka",
     "pluginTier": "community",
-    "source_branch": "master",
+    "sourceBranch": "master",
     "version": "latest"
   },
   {
@@ -50,7 +50,7 @@
     "archived": true
   },
   {
-    "title": "Cloudstack",
+    "title": "CloudStack",
     "path": "cloudstack",
     "repo": "hashicorp/packer-plugin-cloudstack",
     "pluginTier": "community",
@@ -109,7 +109,7 @@
     "isHcpPackerReady": false
   },
   {
-    "title": "hcloud",
+    "title": "Hetzner Cloud",
     "path": "hetzner-cloud",
     "repo": "hashicorp/packer-plugin-hcloud",
     "version": "latest",
@@ -181,6 +181,13 @@
     "version": "latest"
   },
   {
+    "title": "Mondoo",
+    "path": "mondoo",
+    "repo": "mondoohq/packer-plugin-mondoo",
+    "pluginTier": "verified",
+    "version": "latest"
+  },
+  {
     "title": "Naver Cloud",
     "path": "ncloud",
     "repo": "hashicorp/packer-plugin-ncloud",
@@ -188,7 +195,7 @@
     "version": "latest"
   },
   {
-    "title": "Openstack",
+    "title": "OpenStack",
     "path": "openstack",
     "repo": "hashicorp/packer-plugin-openstack",
     "pluginTier": "community",
@@ -205,7 +212,7 @@
     "title": "Outscale",
     "path": "outscale",
     "repo": "outscale/packer-plugin-outscale",
-    "version": "latest",
+    "version": "v1.0.2",
     "pluginTier": "verified"
   },
   {

@@ -1,5 +1,26 @@
 [
   {
+    "title": "What is Packer?",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "intro"
+      },
+      {
+        "title": "Why Use Packer?",
+        "path": "intro/why"
+      },
+      {
+        "title": "Use Cases",
+        "path": "intro/use-cases"
+      }
+    ]
+  },
+  {
+    "title": "HCP Packer",
+    "path": "hcp"
+  },
+  {
     "divider": true
   },
   {
@@ -720,7 +741,7 @@
         ]
       },
       {
-        "title": "Http",
+        "title": "HTTP",
         "path": "datasources/http"
       }
     ]
@@ -804,10 +825,6 @@
     ]
   },
   {
-    "title": "External Plugins",
-    "href": "/plugins"
-  },
-  {
     "divider": true
   },
   {
@@ -822,14 +839,22 @@
     "divider": true
   },
   {
-    "title": "Packer Plugins",
+    "title": "Plugins",
     "routes": [
       {
         "title": "Overview",
         "path": "plugins"
       },
       {
-        "title": "Extending Packer",
+        "title": "Installing Plugins",
+        "path": "plugins/install-plugins"
+      },
+      {
+        "title": "External Plugins",
+        "href": "/plugins"
+      },
+      {
+        "title": "Developing Plugins",
         "routes": [
           {
             "title": "Overview",
@@ -850,12 +875,12 @@
           {
             "title": "Custom Data Sources",
             "path": "plugins/creation/custom-datasources"
+          },
+          {
+            "title": "HCP Packer Support",
+            "path": "plugins/creation/hcp-support"
           }
         ]
-      },
-      {
-        "title": "HCP Packer Support",
-        "path": "plugins/hcp-support"
       }
     ]
   },
@@ -869,9 +894,5 @@
   {
     "title": "Debugging",
     "path": "debugging"
-  },
-  {
-    "title": "HCP Packer",
-    "href": "https://cloud.hashicorp.com/docs/packer"
   }
 ]

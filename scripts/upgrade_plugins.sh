@@ -26,7 +26,6 @@ declare -a plugins=(
 	"hashicorp/packer-plugin-lxd"
 	"hashicorp/packer-plugin-ncloud"
 	"hashicorp/packer-plugin-openstack"
-	"hashicorp/packer-plugin-oracle"
 	"hashicorp/packer-plugin-oneandone"
 	"hashicorp/packer-plugin-parallels"
 	"hashicorp/packer-plugin-profitbricks"
@@ -63,4 +62,4 @@ do
    sleep 1
 done
 
-go mod tidy -compat=1.17
+go mod tidy -compat=1.18
