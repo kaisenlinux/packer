@@ -45,6 +45,12 @@ func (c *ValidateCommand) ParseArgs(args []string) (*ValidateArgs, int) {
 }
 
 func (c *ValidateCommand) RunContext(ctx context.Context, cla *ValidateArgs) int {
+	// By default we want to inform users of undeclared variables when validating but not during build time.
+	cla.MetaArgs.WarnOnUndeclaredVar = true
+	if cla.NoWarnUndeclaredVar {
+		cla.MetaArgs.WarnOnUndeclaredVar = false
+	}
+
 	packerStarter, ret := c.GetConfig(&cla.MetaArgs)
 	if ret != 0 {
 		return 1
@@ -57,7 +63,7 @@ func (c *ValidateCommand) RunContext(ctx context.Context, cla *ValidateArgs) int
 	}
 
 	diags := packerStarter.Initialize(packer.InitializeOptions{
-		SkipDatasourcesExecution: true,
+		SkipDatasourcesExecution: !cla.EvaluateDatasources,
 	})
 	ret = writeDiags(c.Ui, nil, diags)
 	if ret != 0 {
@@ -95,12 +101,14 @@ Usage: packer validate [options] TEMPLATE
 
 Options:
 
-  -syntax-only           Only check syntax. Do not verify config of the template.
-  -except=foo,bar,baz    Validate all builds other than these.
-  -machine-readable      Produce machine-readable output.
-  -only=foo,bar,baz      Validate only these builds.
-  -var 'key=value'       Variable for templates, can be used multiple times.
-  -var-file=path         JSON or HCL2 file containing user variables.
+  -syntax-only                  Only check syntax. Do not verify config of the template.
+  -except=foo,bar,baz           Validate all builds other than these.
+  -only=foo,bar,baz             Validate only these builds.
+  -machine-readable             Produce machine-readable output.
+  -var 'key=value'              Variable for templates, can be used multiple times.
+  -var-file=path                JSON or HCL2 file containing user variables, can be used multiple times.
+  -no-warn-undeclared-var       Disable warnings for user variable files containing undeclared variables.
+  -evaluate-datasources         Evaluate data sources during validation (HCL2 only, may incur costs); Defaults to false. 
 `
 
 	return strings.TrimSpace(helpText)

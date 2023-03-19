@@ -7,12 +7,11 @@ import (
 	"strings"
 
 	"github.com/gobwas/glob"
-	"github.com/hashicorp/hcl/v2"
+	hcl "github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcldec"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
 	pkrfunction "github.com/hashicorp/packer/hcl2template/function"
-	packerregistry "github.com/hashicorp/packer/internal/registry"
 	"github.com/hashicorp/packer/packer"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -54,8 +53,8 @@ type PackerConfig struct {
 	// Builds is the list of Build blocks defined in the config files.
 	Builds Builds
 
-	// Represents registry bucket defined in the config files.
-	Bucket *packerregistry.Bucket
+	// HCPVars is the list of HCP-set variables for use later in a template
+	HCPVars map[string]cty.Value
 
 	parser *Parser
 	files  []*hcl.File
@@ -69,7 +68,7 @@ type PackerConfig struct {
 }
 
 type ValidationOptions struct {
-	Strict bool
+	WarnOnUndeclaredVar bool
 }
 
 const (
@@ -119,11 +118,13 @@ func (cfg *PackerConfig) EvalContext(ctx BlockContext, variables map[string]cty.
 		},
 	}
 
-	// Store the iteration_id, if it exists. Otherwise, it'll be "unknown"
-	if cfg.Bucket != nil {
+	iterID, ok := cfg.HCPVars["iterationID"]
+	if ok {
+		log.Printf("iterationID set: %q", iterID)
+
 		ectx.Variables[packerAccessor] = cty.ObjectVal(map[string]cty.Value{
 			"version":     cty.StringVal(cfg.CorePackerVersionString),
-			"iterationID": cty.StringVal(cfg.Bucket.Iteration.ID),
+			"iterationID": iterID,
 		})
 	}
 
@@ -513,7 +514,7 @@ func (cfg *PackerConfig) getCoreBuildProvisioner(source SourceUseBlock, pb *Prov
 
 // getCoreBuildProvisioners takes a list of post processor block, starts
 // according provisioners and sends parsed HCL2 over to it.
-func (cfg *PackerConfig) getCoreBuildPostProcessors(source SourceUseBlock, blocksList [][]*PostProcessorBlock, ectx *hcl.EvalContext) ([][]packer.CoreBuildPostProcessor, hcl.Diagnostics) {
+func (cfg *PackerConfig) getCoreBuildPostProcessors(source SourceUseBlock, blocksList [][]*PostProcessorBlock, ectx *hcl.EvalContext, exceptMatches *int) ([][]packer.CoreBuildPostProcessor, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	res := [][]packer.CoreBuildPostProcessor{}
 	for _, blocks := range blocksList {
@@ -532,6 +533,7 @@ func (cfg *PackerConfig) getCoreBuildPostProcessors(source SourceUseBlock, block
 			for _, exceptGlob := range cfg.except {
 				if exceptGlob.Match(name) {
 					exclude = true
+					*exceptMatches = *exceptMatches + 1
 					break
 				}
 			}
@@ -543,14 +545,6 @@ func (cfg *PackerConfig) getCoreBuildPostProcessors(source SourceUseBlock, block
 			diags = append(diags, moreDiags...)
 			if moreDiags.HasErrors() {
 				continue
-			}
-
-			if cfg.Bucket != nil {
-				postProcessor = &packer.RegistryPostProcessor{
-					ArtifactMetadataPublisher: cfg.Bucket,
-					BuilderType:               source.String(),
-					PostProcessor:             postProcessor,
-				}
 			}
 
 			pps = append(pps, packer.CoreBuildPostProcessor{
@@ -680,40 +674,20 @@ func (cfg *PackerConfig) GetBuilds(opts packer.GetBuildsOptions) ([]packersdk.Bu
 			if moreDiags.HasErrors() {
 				continue
 			}
-			pps, moreDiags := cfg.getCoreBuildPostProcessors(srcUsage, build.PostProcessorsLists, cfg.EvalContext(BuildContext, variables))
+			pps, moreDiags := cfg.getCoreBuildPostProcessors(srcUsage, build.PostProcessorsLists, cfg.EvalContext(BuildContext, variables), &opts.ExceptMatches)
 			diags = append(diags, moreDiags...)
 			if moreDiags.HasErrors() {
 				continue
 			}
 
-			if cfg.Bucket != nil {
-				pps = append(pps, []packer.CoreBuildPostProcessor{
-					{
-						PostProcessor: &packer.RegistryPostProcessor{
-							BuilderType:               srcUsage.String(),
-							ArtifactMetadataPublisher: cfg.Bucket,
-						},
-					},
-				})
-			}
-
-			if build.ErrorCleanupProvisionerBlock != nil {
-				if !build.ErrorCleanupProvisionerBlock.OnlyExcept.Skip(srcUsage.String()) {
-					errorCleanupProv, moreDiags := cfg.getCoreBuildProvisioner(srcUsage, build.ErrorCleanupProvisionerBlock, cfg.EvalContext(BuildContext, variables))
-					diags = append(diags, moreDiags...)
-					if moreDiags.HasErrors() {
-						continue
-					}
-					pcb.CleanupProvisioner = errorCleanupProv
+			if build.ErrorCleanupProvisionerBlock != nil &&
+				!build.ErrorCleanupProvisionerBlock.OnlyExcept.Skip(srcUsage.String()) {
+				errorCleanupProv, moreDiags := cfg.getCoreBuildProvisioner(srcUsage, build.ErrorCleanupProvisionerBlock, cfg.EvalContext(BuildContext, variables))
+				diags = append(diags, moreDiags...)
+				if moreDiags.HasErrors() {
+					continue
 				}
-			}
-
-			if cfg.Bucket != nil && cfg.Bucket.Validate() == nil {
-				builder = &packer.RegistryBuilder{
-					Name:                      srcUsage.String(),
-					Builder:                   builder,
-					ArtifactMetadataPublisher: cfg.Bucket,
-				}
+				pcb.CleanupProvisioner = errorCleanupProv
 			}
 
 			pcb.Builder = builder

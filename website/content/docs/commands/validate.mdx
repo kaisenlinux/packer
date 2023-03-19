@@ -31,6 +31,14 @@ Errors validating build 'vmware'. 1 error(s) occurred:
 - `-syntax-only` - Only the syntax of the template is checked. The
   configuration is not validated.
 
+- `-evaluate-datasources` - Evaluate all data sources when validating a template.
+  This is only valid on HCL2 templates, since JSON templates do not feature
+  datasources, this option will be ignored.
+
+  ~> **Warning:** Data sources may rely on external services for fetching data,
+  which can incur some costs at validation if the services being contacted are
+  billing per operation.
+
 - `-except=foo,bar,baz` - Validates all the builds except those with the
   comma-separated names. In legacy JSON templates, build names default to the
   types of their builders (e.g. `docker` or
@@ -38,6 +46,15 @@ Errors validating build 'vmware'. 1 error(s) occurred:
   specified within the configuration. In HCL2 templates, the "name" is the
   source block's "name" label, unless an in-build source definition adds the
   "name" configuration option.
+
+- `-no-warn-on-undeclared-var` - Silence warnings when the a variable definition
+  file contains variable assignments for undeclared variables. This can occur
+  when using a var-file that contains a large amount of unused variables for a
+  given HCL2 template. For HCL2 template defining a value for a variable in a
+  var-file is not enough on its own for Packer to function, as there also needs
+  to be a variable block definition in the template files `pkr.hcl` for the
+  variable. By default `packer validate` will warn when a var-file contains one
+  or more undeclared variables.
 
 - `-only=foo,bar,baz` - Only validate the builds with the given comma-separated
   names. In legacy JSON templates, build names default to the

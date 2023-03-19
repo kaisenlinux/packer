@@ -1,3 +1,9 @@
+packer (1.8.6-1kaisen) kaisen-packages; urgency=medium
+
+  * Import the 1.8.6 version
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Sun, 19 Mar 2023 22:13:36 +0100
+
 packer (1.8.4-1kaisen) kaisen-packages; urgency=medium
 
   * Import the 1.8.4 version

@@ -1,6 +1,7 @@
 package command
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -11,8 +12,9 @@ import (
 
 func TestValidateCommand(t *testing.T) {
 	tt := []struct {
-		path     string
-		exitCode int
+		path      string
+		exitCode  int
+		extraArgs []string
 	}{
 		{path: filepath.Join(testFixture("validate"), "build.json")},
 		{path: filepath.Join(testFixture("validate"), "build.pkr.hcl")},
@@ -39,6 +41,11 @@ func TestValidateCommand(t *testing.T) {
 
 		// datasource could be unknown at that moment
 		{path: filepath.Join(testFixture("hcl", "data-source-validation.pkr.hcl")), exitCode: 0},
+
+		// datasource unknown at validation-time without datasource evaluation -> fail on provisioner
+		{path: filepath.Join(testFixture("hcl", "local-ds-validate.pkr.hcl")), exitCode: 1},
+		// datasource unknown at validation-time with datasource evaluation -> success
+		{path: filepath.Join(testFixture("hcl", "local-ds-validate.pkr.hcl")), exitCode: 0, extraArgs: []string{"--evaluate-datasources"}},
 	}
 
 	for _, tc := range tt {
@@ -47,7 +54,8 @@ func TestValidateCommand(t *testing.T) {
 				Meta: TestMetaFile(t),
 			}
 			tc := tc
-			args := []string{tc.path}
+			args := tc.extraArgs
+			args = append(args, tc.path)
 			if code := c.Run(args); code != tc.exitCode {
 				fatalCommand(t, c.Meta)
 			}
@@ -202,6 +210,174 @@ func TestValidateCommandExcept(t *testing.T) {
 			if code := c.Run(tc.args); code != tc.exitCode {
 				fatalCommand(t, c.Meta)
 			}
+		})
+	}
+}
+
+func TestValidateCommand_VarFiles(t *testing.T) {
+	tt := []struct {
+		name     string
+		path     string
+		varfile  string
+		exitCode int
+	}{
+		{name: "with basic HCL var-file definition",
+			path:     filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "basic.pkr.hcl"),
+			varfile:  filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "basic.pkrvars.hcl"),
+			exitCode: 0,
+		},
+		{name: "with unused variable in var-file definition",
+			path:     filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "basic.pkr.hcl"),
+			varfile:  filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "undeclared.pkrvars.hcl"),
+			exitCode: 0,
+		},
+		{name: "with unused variable in JSON var-file definition",
+			path:     filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "basic.pkr.hcl"),
+			varfile:  filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "undeclared.json"),
+			exitCode: 0,
+		},
+	}
+	for _, tc := range tt {
+		t.Run(tc.path, func(t *testing.T) {
+			c := &ValidateCommand{
+				Meta: TestMetaFile(t),
+			}
+			tc := tc
+			args := []string{"-var-file", tc.varfile, tc.path}
+			if code := c.Run(args); code != tc.exitCode {
+				fatalCommand(t, c.Meta)
+			}
+		})
+	}
+}
+
+func TestValidateCommand_VarFilesWarnOnUndeclared(t *testing.T) {
+	tt := []struct {
+		name     string
+		path     string
+		varfile  string
+		exitCode int
+	}{
+		{name: "default warning with unused variable in HCL var-file definition",
+			path:     filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "basic.pkr.hcl"),
+			varfile:  filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "undeclared.pkrvars.hcl"),
+			exitCode: 0,
+		},
+		{name: "default warning with unused variable in JSON var-file definition",
+			path:     filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "basic.pkr.hcl"),
+			varfile:  filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "undeclared.json"),
+			exitCode: 0,
+		},
+	}
+	for _, tc := range tt {
+		t.Run(tc.path, func(t *testing.T) {
+			c := &ValidateCommand{
+				Meta: TestMetaFile(t),
+			}
+			tc := tc
+			args := []string{"-var-file", tc.varfile, tc.path}
+			if code := c.Run(args); code != tc.exitCode {
+				fatalCommand(t, c.Meta)
+			}
+
+			stdout, stderr := GetStdoutAndErrFromTestMeta(t, c.Meta)
+			expected := `Warning: Undefined variable
+
+The variable "unused" was set but was not declared as an input variable.
+To declare variable "unused" place this block in one of your .pkr.hcl files,
+such as variables.pkr.hcl
+
+variable "unused" {
+  type    = string
+  default = null
+}
+
+
+The configuration is valid.
+`
+			if diff := cmp.Diff(expected, stdout); diff != "" {
+				t.Errorf("Unexpected output: %s", diff)
+			}
+			t.Log(stderr)
+		})
+	}
+}
+
+func TestValidateCommand_VarFilesDisableWarnOnUndeclared(t *testing.T) {
+	tt := []struct {
+		name     string
+		path     string
+		varfile  string
+		exitCode int
+	}{
+		{name: "no-warn-undeclared-var with unused variable in HCL var-file definition",
+			path:     filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "basic.pkr.hcl"),
+			varfile:  filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "undeclared.pkrvars.hcl"),
+			exitCode: 0,
+		},
+		{name: "no-warn-undeclared-var with unused variable in JSON var-file definition",
+			path:     filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "basic.pkr.hcl"),
+			varfile:  filepath.Join(testFixture(filepath.Join("validate", "var-file-tests")), "undeclared.json"),
+			exitCode: 0,
+		},
+	}
+	for _, tc := range tt {
+		t.Run(tc.path, func(t *testing.T) {
+			c := &ValidateCommand{
+				Meta: TestMetaFile(t),
+			}
+			tc := tc
+			args := []string{"-no-warn-undeclared-var", "-var-file", tc.varfile, tc.path}
+			if code := c.Run(args); code != tc.exitCode {
+				fatalCommand(t, c.Meta)
+			}
+
+			stdout, stderr := GetStdoutAndErrFromTestMeta(t, c.Meta)
+			expected := `The configuration is valid.
+`
+			if diff := cmp.Diff(expected, stdout); diff != "" {
+				t.Errorf("Unexpected output: %s", diff)
+			}
+			t.Log(stderr)
+		})
+	}
+}
+
+func TestValidateCommand_ShowLineNumForMissing(t *testing.T) {
+	tt := []struct {
+		path      string
+		exitCode  int
+		extraArgs []string
+	}{
+		{path: filepath.Join(testFixture("validate-invalid"), "missing_build_block.pkr.hcl"), exitCode: 1},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.path, func(t *testing.T) {
+			c := &ValidateCommand{
+				Meta: TestMetaFile(t),
+			}
+			tc := tc
+			args := tc.extraArgs
+			args = append(args, tc.path)
+			if code := c.Run(args); code != tc.exitCode {
+				fatalCommand(t, c.Meta)
+			}
+
+			stdout, stderr := GetStdoutAndErrFromTestMeta(t, c.Meta)
+			expected := fmt.Sprintf(`Error: Unknown source file.cho
+
+  on %s line 6:
+  (source code not available)
+
+Known: [file.chocolate]
+
+
+`, tc.path)
+			if diff := cmp.Diff(expected, stderr); diff != "" {
+				t.Errorf("Unexpected output: %s", diff)
+			}
+			t.Log(stdout)
 		})
 	}
 }
