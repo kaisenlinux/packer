@@ -1,8 +1,12 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package registry
 
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcp-sdk-go/clients/cloud-packer-service/stable/2021-04-30/models"
@@ -17,6 +21,7 @@ import (
 type HCLMetadataRegistry struct {
 	configuration *hcl2template.PackerConfig
 	bucket        *Bucket
+	ui            sdkpacker.Ui
 }
 
 const (
@@ -41,6 +46,13 @@ func (h *HCLMetadataRegistry) PopulateIteration(ctx context.Context) error {
 	iterationID := h.bucket.Iteration.ID
 
 	h.configuration.HCPVars["iterationID"] = cty.StringVal(iterationID)
+
+	sha, err := getGitSHA(h.configuration.Basedir)
+	if err != nil {
+		log.Printf("failed to get GIT SHA from environment, won't set as build labels")
+	} else {
+		h.bucket.Iteration.AddSHAToBuildLabels(sha)
+	}
 
 	return nil
 }
@@ -70,7 +82,12 @@ func (h *HCLMetadataRegistry) CompleteBuild(
 	return h.bucket.completeBuild(ctx, name, artifacts, buildErr)
 }
 
-func NewHCLMetadataRegistry(config *hcl2template.PackerConfig) (*HCLMetadataRegistry, hcl.Diagnostics) {
+// IterationStatusSummary prints a status report in the UI if the iteration is not yet done
+func (h *HCLMetadataRegistry) IterationStatusSummary() {
+	h.bucket.Iteration.iterationStatusSummary(h.ui)
+}
+
+func NewHCLMetadataRegistry(config *hcl2template.PackerConfig, ui sdkpacker.Ui) (*HCLMetadataRegistry, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 	if len(config.Builds) > 1 {
 		diags = append(diags, &hcl.Diagnostic{
@@ -127,9 +144,12 @@ func NewHCLMetadataRegistry(config *hcl2template.PackerConfig) (*HCLMetadataRegi
 		bucket.RegisterBuildForComponent(source.String())
 	}
 
+	ui.Say(fmt.Sprintf("Tracking build on HCP Packer with fingerprint %q", bucket.Iteration.Fingerprint))
+
 	return &HCLMetadataRegistry{
 		configuration: config,
 		bucket:        bucket,
+		ui:            ui,
 	}, nil
 }
 

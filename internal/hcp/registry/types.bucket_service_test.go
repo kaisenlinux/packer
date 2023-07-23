@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package registry
 
 import (
@@ -9,7 +12,6 @@ import (
 )
 
 func TestInitialize_NewBucketNewIteration(t *testing.T) {
-	t.Setenv("HCP_PACKER_BUILD_FINGERPRINT", "testnumber")
 	mockService := api.NewMockPackerClientService()
 
 	b := &Bucket{
@@ -20,7 +22,7 @@ func TestInitialize_NewBucketNewIteration(t *testing.T) {
 	}
 
 	b.Iteration = NewIteration()
-	err := b.Iteration.Initialize(IterationOptions{})
+	err := b.Iteration.Initialize()
 	if err != nil {
 		t.Errorf("unexpected failure: %v", err)
 	}
@@ -62,7 +64,6 @@ func TestInitialize_NewBucketNewIteration(t *testing.T) {
 }
 
 func TestInitialize_UnsetTemplateTypeError(t *testing.T) {
-	t.Setenv("HCP_PACKER_BUILD_FINGERPRINT", "testunsettemplate")
 	mockService := api.NewMockPackerClientService()
 	mockService.BucketAlreadyExist = true
 
@@ -74,7 +75,7 @@ func TestInitialize_UnsetTemplateTypeError(t *testing.T) {
 	}
 
 	b.Iteration = NewIteration()
-	err := b.Iteration.Initialize(IterationOptions{})
+	err := b.Iteration.Initialize()
 	if err != nil {
 		t.Errorf("unexpected failure: %v", err)
 	}
@@ -88,7 +89,6 @@ func TestInitialize_UnsetTemplateTypeError(t *testing.T) {
 }
 
 func TestInitialize_ExistingBucketNewIteration(t *testing.T) {
-	t.Setenv("HCP_PACKER_BUILD_FINGERPRINT", "testnumber")
 	mockService := api.NewMockPackerClientService()
 	mockService.BucketAlreadyExist = true
 
@@ -100,7 +100,7 @@ func TestInitialize_ExistingBucketNewIteration(t *testing.T) {
 	}
 
 	b.Iteration = NewIteration()
-	err := b.Iteration.Initialize(IterationOptions{})
+	err := b.Iteration.Initialize()
 	if err != nil {
 		t.Errorf("unexpected failure: %v", err)
 	}
@@ -142,7 +142,6 @@ func TestInitialize_ExistingBucketNewIteration(t *testing.T) {
 }
 
 func TestInitialize_ExistingBucketExistingIteration(t *testing.T) {
-	t.Setenv("HCP_PACKER_BUILD_FINGERPRINT", "testnumber")
 	mockService := api.NewMockPackerClientService()
 	mockService.BucketAlreadyExist = true
 	mockService.IterationAlreadyExist = true
@@ -155,7 +154,7 @@ func TestInitialize_ExistingBucketExistingIteration(t *testing.T) {
 	}
 
 	b.Iteration = NewIteration()
-	err := b.Iteration.Initialize(IterationOptions{})
+	err := b.Iteration.Initialize()
 	if err != nil {
 		t.Errorf("unexpected failure: %v", err)
 	}
@@ -212,7 +211,6 @@ func TestInitialize_ExistingBucketExistingIteration(t *testing.T) {
 }
 
 func TestInitialize_ExistingBucketCompleteIteration(t *testing.T) {
-	t.Setenv("HCP_PACKER_BUILD_FINGERPRINT", "testnumber")
 	mockService := api.NewMockPackerClientService()
 	mockService.BucketAlreadyExist = true
 	mockService.IterationAlreadyExist = true
@@ -227,7 +225,7 @@ func TestInitialize_ExistingBucketCompleteIteration(t *testing.T) {
 	}
 
 	b.Iteration = NewIteration()
-	err := b.Iteration.Initialize(IterationOptions{})
+	err := b.Iteration.Initialize()
 	if err != nil {
 		t.Errorf("unexpected failure: %v", err)
 	}
@@ -258,7 +256,6 @@ func TestInitialize_ExistingBucketCompleteIteration(t *testing.T) {
 }
 
 func TestUpdateBuildStatus(t *testing.T) {
-	t.Setenv("HCP_PACKER_BUILD_FINGERPRINT", "testnumber")
 	mockService := api.NewMockPackerClientService()
 	mockService.BucketAlreadyExist = true
 	mockService.IterationAlreadyExist = true
@@ -271,7 +268,7 @@ func TestUpdateBuildStatus(t *testing.T) {
 	}
 
 	b.Iteration = NewIteration()
-	err := b.Iteration.Initialize(IterationOptions{})
+	err := b.Iteration.Initialize()
 	if err != nil {
 		t.Errorf("unexpected failure: %v", err)
 	}
@@ -312,7 +309,6 @@ func TestUpdateBuildStatus(t *testing.T) {
 }
 
 func TestUpdateBuildStatus_DONENoImages(t *testing.T) {
-	t.Setenv("HCP_PACKER_BUILD_FINGERPRINT", "testnumber")
 	mockService := api.NewMockPackerClientService()
 	mockService.BucketAlreadyExist = true
 	mockService.IterationAlreadyExist = true
@@ -325,7 +321,7 @@ func TestUpdateBuildStatus_DONENoImages(t *testing.T) {
 	}
 
 	b.Iteration = NewIteration()
-	err := b.Iteration.Initialize(IterationOptions{})
+	err := b.Iteration.Initialize()
 	if err != nil {
 		t.Errorf("unexpected failure: %v", err)
 	}

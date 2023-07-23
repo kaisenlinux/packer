@@ -1,11 +1,11 @@
 #!/usr/bin/make -f
 
-export GOPATH=$(CURDIR)/obj-x86_64-linux-gnu
-export GOBIN=$(CURDIR)/obj-x86_64-linux-gnu/bin
+export GOPATH=$(CURDIR)/_build
+export GOBIN=$(CURDIR)/_build/bin
 export GO111MODULE=on
 
 %:
-	dh $@ --buildsystem=golang
+	dh $@ --buildsystem=golang --builddirectory=_build
 
 override_dh_auto_build:
 	make version
@@ -15,9 +15,6 @@ override_dh_auto_test:
 	go test
 
 override_dh_auto_install:
-	mkdir -p $(CURDIR)/debian/packer/usr/bin
-	cp -f $(CURDIR)/obj-x86_64-linux-gnu/bin/packer $(CURDIR)/debian/packer/usr/bin
-	mkdir -p $(CURDIR)/debian/packer/usr/share/zsh/vendor-completions
-	cp -rf $(CURDIR)/contrib/zsh-completion/_packer $(CURDIR)/debian/packer/usr/share/zsh/vendor-completions
-	mkdir -p $(CURDIR)/debian/packer/usr/share/pixmaps
-	cp -f $(CURDIR)/debian/packer.png $(CURDIR)/debian/packer/usr/share/pixmaps
+	install -p -m 0755 $(CURDIR)/_build/bin/packer $(CURDIR)/debian/packer/usr/bin
+	install -p -m 0755 $(CURDIR)/contrib/zsh-completion/_packer $(CURDIR)/debian/packer/usr/share/zsh/vendor-completions
+	install -p -m 0644 $(CURDIR)/debian/packer.png $(CURDIR)/debian/packer/usr/share/pixmaps

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package packer
 
 import (
@@ -127,6 +130,12 @@ func NewCore(c *CoreConfig) *Core {
 		except:     c.Except,
 	}
 	return core
+}
+
+// DetectPluginBinaries is used to load required plugins from the template,
+// since it is unsupported in JSON, this is essentially a no-op.
+func (c *Core) DetectPluginBinaries() hcl.Diagnostics {
+	return nil
 }
 
 func (c *Core) Initialize(_ InitializeOptions) hcl.Diagnostics {
@@ -421,7 +430,7 @@ func (c *Core) Build(n string) (packersdk.Build, error) {
 	// Return a structure that contains the plugins, their types, variables, and
 	// the raw builder config loaded from the json template
 	cb := &CoreBuild{
-		Type:               configBuilder.Name,
+		Type:               n,
 		Builder:            builder,
 		BuilderConfig:      configBuilder.Config,
 		BuilderType:        configBuilder.Type,
@@ -432,6 +441,8 @@ func (c *Core) Build(n string) (packersdk.Build, error) {
 		Variables:          c.variables,
 	}
 
+	//configBuilder.Name is left uninterpolated so we must check against
+	// the interpolated name.
 	if configBuilder.Type != configBuilder.Name {
 		cb.BuildName = configBuilder.Type
 	}

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package hcl2template
 
 import (
@@ -5,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/packer-plugin-sdk/didyoumean"
@@ -51,7 +55,7 @@ func (cfg *PackerConfig) PluginRequirements() (plugingetter.Requirements, hcl.Di
 	return reqs, diags
 }
 
-func (cfg *PackerConfig) detectPluginBinaries() hcl.Diagnostics {
+func (cfg *PackerConfig) DetectPluginBinaries() hcl.Diagnostics {
 	opts := plugingetter.ListInstallationsOptions{
 		FromFolders: cfg.parser.PluginConfig.KnownPluginFolders,
 		BinaryInstallationOptions: plugingetter.BinaryInstallationOptions{
@@ -74,6 +78,8 @@ func (cfg *PackerConfig) detectPluginBinaries() hcl.Diagnostics {
 		return diags
 	}
 
+	uninstalledPlugins := map[string]string{}
+
 	for _, pluginRequirement := range pluginReqs {
 		sortedInstalls, err := pluginRequirement.ListInstallations(opts)
 		if err != nil {
@@ -85,11 +91,7 @@ func (cfg *PackerConfig) detectPluginBinaries() hcl.Diagnostics {
 			continue
 		}
 		if len(sortedInstalls) == 0 {
-			diags = append(diags, &hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  fmt.Sprintf("no plugin installed for %s %v", pluginRequirement.Identifier, pluginRequirement.VersionConstraints.String()),
-				Detail:   "Did you run packer init for this project ?",
-			})
+			uninstalledPlugins[pluginRequirement.Identifier.String()] = pluginRequirement.VersionConstraints.String()
 			continue
 		}
 		log.Printf("[TRACE] Found the following %q installations: %v", pluginRequirement.Identifier, sortedInstalls)
@@ -103,6 +105,20 @@ func (cfg *PackerConfig) detectPluginBinaries() hcl.Diagnostics {
 			})
 			continue
 		}
+	}
+
+	if len(uninstalledPlugins) > 0 {
+		detailMessage := &strings.Builder{}
+		detailMessage.WriteString("The following plugins are required, but not installed:\n\n")
+		for pluginName, pluginVersion := range uninstalledPlugins {
+			fmt.Fprintf(detailMessage, "* %s %s\n", pluginName, pluginVersion)
+		}
+		detailMessage.WriteString("\nDid you run packer init for this project ?")
+		diags = append(diags, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "Missing plugins",
+			Detail:   detailMessage.String(),
+		})
 	}
 
 	return diags

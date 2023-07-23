@@ -1,16 +1,19 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package command
 
 import (
+	"fmt"
+	"log"
+	"strings"
+
 	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
 
 	// Previously core-bundled components, split into their own plugins but
 	// still vendored with Packer for now. Importing as library instead of
-	// forcing use of packer init, until packer v1.8.0
+	// forcing use of packer init.
 
-	digitaloceanbuilder "github.com/digitalocean/packer-plugin-digitalocean/builder/digitalocean"
-	digitaloceanimportpostprocessor "github.com/digitalocean/packer-plugin-digitalocean/post-processor/digitalocean-import"
-	alicloudecsbuilder "github.com/hashicorp/packer-plugin-alicloud/builder/ecs"
-	alicloudimportpostprocessor "github.com/hashicorp/packer-plugin-alicloud/post-processor/alicloud-import"
 	amazonchrootbuilder "github.com/hashicorp/packer-plugin-amazon/builder/chroot"
 	amazonebsbuilder "github.com/hashicorp/packer-plugin-amazon/builder/ebs"
 	amazonebssurrogatebuilder "github.com/hashicorp/packer-plugin-amazon/builder/ebssurrogate"
@@ -25,10 +28,6 @@ import (
 	azurechrootbuilder "github.com/hashicorp/packer-plugin-azure/builder/azure/chroot"
 	azuredtlbuilder "github.com/hashicorp/packer-plugin-azure/builder/azure/dtl"
 	azuredtlartifactprovisioner "github.com/hashicorp/packer-plugin-azure/provisioner/azure-dtlartifact"
-	chefclientprovisioner "github.com/hashicorp/packer-plugin-chef/provisioner/chef-client"
-	chefsoloprovisioner "github.com/hashicorp/packer-plugin-chef/provisioner/chef-solo"
-	cloudstackbuilder "github.com/hashicorp/packer-plugin-cloudstack/builder/cloudstack"
-	convergeprovisioner "github.com/hashicorp/packer-plugin-converge/provisioner/converge"
 	dockerbuilder "github.com/hashicorp/packer-plugin-docker/builder/docker"
 	dockerimportpostprocessor "github.com/hashicorp/packer-plugin-docker/post-processor/docker-import"
 	dockerpushpostprocessor "github.com/hashicorp/packer-plugin-docker/post-processor/docker-push"
@@ -37,31 +36,7 @@ import (
 	googlecomputebuilder "github.com/hashicorp/packer-plugin-googlecompute/builder/googlecompute"
 	googlecomputeexportpostprocessor "github.com/hashicorp/packer-plugin-googlecompute/post-processor/googlecompute-export"
 	googlecomputeimportpostprocessor "github.com/hashicorp/packer-plugin-googlecompute/post-processor/googlecompute-import"
-	hcloudbuilder "github.com/hashicorp/packer-plugin-hcloud/builder/hcloud"
-	hyperonebuilder "github.com/hashicorp/packer-plugin-hyperone/builder/hyperone"
-	hypervisobuilder "github.com/hashicorp/packer-plugin-hyperv/builder/hyperv/iso"
-	hypervvmcxbuilder "github.com/hashicorp/packer-plugin-hyperv/builder/hyperv/vmcx"
-	inspecprovisioner "github.com/hashicorp/packer-plugin-inspec/provisioner/inspec"
-	jdcloudbuilder "github.com/hashicorp/packer-plugin-jdcloud/builder/jdcloud"
-	linodebuilder "github.com/hashicorp/packer-plugin-linode/builder/linode"
-	lxcbuilder "github.com/hashicorp/packer-plugin-lxc/builder/lxc"
-	lxdbuilder "github.com/hashicorp/packer-plugin-lxd/builder/lxd"
-	ncloudbuilder "github.com/hashicorp/packer-plugin-ncloud/builder/ncloud"
-	oneandonebuilder "github.com/hashicorp/packer-plugin-oneandone/builder/oneandone"
-	openstackbuilder "github.com/hashicorp/packer-plugin-openstack/builder/openstack"
-	parallelsisobuilder "github.com/hashicorp/packer-plugin-parallels/builder/parallels/iso"
-	parallelspvmbuilder "github.com/hashicorp/packer-plugin-parallels/builder/parallels/pvm"
-	profitbricksbuilder "github.com/hashicorp/packer-plugin-profitbricks/builder/profitbricks"
-	proxmoxclone "github.com/hashicorp/packer-plugin-proxmox/builder/proxmox/clone"
-	proxmoxiso "github.com/hashicorp/packer-plugin-proxmox/builder/proxmox/iso"
-	puppetmasterlessprovisioner "github.com/hashicorp/packer-plugin-puppet/provisioner/puppet-masterless"
-	puppetserverprovisioner "github.com/hashicorp/packer-plugin-puppet/provisioner/puppet-server"
 	qemubuilder "github.com/hashicorp/packer-plugin-qemu/builder/qemu"
-	saltmasterlessprovisioner "github.com/hashicorp/packer-plugin-salt/provisioner/salt-masterless"
-	tencentcloudcvmbuilder "github.com/hashicorp/packer-plugin-tencentcloud/builder/tencentcloud/cvm"
-	tritonbuilder "github.com/hashicorp/packer-plugin-triton/builder/triton"
-	uclouduhostbuilder "github.com/hashicorp/packer-plugin-ucloud/builder/ucloud/uhost"
-	ucloudimportpostprocessor "github.com/hashicorp/packer-plugin-ucloud/post-processor/ucloud-import"
 	vagrantbuilder "github.com/hashicorp/packer-plugin-vagrant/builder/vagrant"
 	vagrantpostprocessor "github.com/hashicorp/packer-plugin-vagrant/post-processor/vagrant"
 	vagrantcloudpostprocessor "github.com/hashicorp/packer-plugin-vagrant/post-processor/vagrant-cloud"
@@ -74,9 +49,6 @@ import (
 	vsphereisobuilder "github.com/hashicorp/packer-plugin-vsphere/builder/vsphere/iso"
 	vspherepostprocessor "github.com/hashicorp/packer-plugin-vsphere/post-processor/vsphere"
 	vspheretemplatepostprocessor "github.com/hashicorp/packer-plugin-vsphere/post-processor/vsphere-template"
-	yandexbuilder "github.com/hashicorp/packer-plugin-yandex/builder/yandex"
-	yandexexportpostprocessor "github.com/hashicorp/packer-plugin-yandex/post-processor/yandex-export"
-	yandeximportpostprocessor "github.com/hashicorp/packer-plugin-yandex/post-processor/yandex-import"
 )
 
 // VendoredDatasources are datasource components that were once bundled with the
@@ -89,7 +61,6 @@ var VendoredDatasources = map[string]packersdk.Datasource{
 // VendoredBuilders are builder components that were once bundled with the
 // Packer core, but are now being imported from their counterpart plugin repos
 var VendoredBuilders = map[string]packersdk.Builder{
-	"alicloud-ecs":        new(alicloudecsbuilder.Builder),
 	"amazon-ebs":          new(amazonebsbuilder.Builder),
 	"amazon-chroot":       new(amazonchrootbuilder.Builder),
 	"amazon-ebssurrogate": new(amazonebssurrogatebuilder.Builder),
@@ -98,31 +69,9 @@ var VendoredBuilders = map[string]packersdk.Builder{
 	"azure-arm":           new(azurearmbuilder.Builder),
 	"azure-chroot":        new(azurechrootbuilder.Builder),
 	"azure-dtl":           new(azuredtlbuilder.Builder),
-	"cloudstack":          new(cloudstackbuilder.Builder),
-	"digitalocean":        new(digitaloceanbuilder.Builder),
 	"docker":              new(dockerbuilder.Builder),
 	"googlecompute":       new(googlecomputebuilder.Builder),
-	"hcloud":              new(hcloudbuilder.Builder),
-	"hyperv-iso":          new(hypervisobuilder.Builder),
-	"hyperv-vmcx":         new(hypervvmcxbuilder.Builder),
-	"hyperone":            new(hyperonebuilder.Builder),
-	"jdcloud":             new(jdcloudbuilder.Builder),
-	"linode":              new(linodebuilder.Builder),
-	"lxc":                 new(lxcbuilder.Builder),
-	"lxd":                 new(lxdbuilder.Builder),
-	"ncloud":              new(ncloudbuilder.Builder),
-	"oneandone":           new(oneandonebuilder.Builder),
-	"openstack":           new(openstackbuilder.Builder),
-	"profitbricks":        new(profitbricksbuilder.Builder),
-	"proxmox":             new(proxmoxiso.Builder),
-	"proxmox-iso":         new(proxmoxiso.Builder),
-	"proxmox-clone":       new(proxmoxclone.Builder),
-	"parallels-iso":       new(parallelsisobuilder.Builder),
-	"parallels-pvm":       new(parallelspvmbuilder.Builder),
 	"qemu":                new(qemubuilder.Builder),
-	"tencentcloud-cvm":    new(tencentcloudcvmbuilder.Builder),
-	"triton":              new(tritonbuilder.Builder),
-	"ucloud-uhost":        new(uclouduhostbuilder.Builder),
 	"vagrant":             new(vagrantbuilder.Builder),
 	"vsphere-clone":       new(vsphereclonebuilder.Builder),
 	"vsphere-iso":         new(vsphereisobuilder.Builder),
@@ -131,7 +80,6 @@ var VendoredBuilders = map[string]packersdk.Builder{
 	"virtualbox-vm":       new(virtualboxvmbuilder.Builder),
 	"vmware-iso":          new(vmwareisobuilder.Builder),
 	"vmware-vmx":          new(vmwarevmxbuilder.Builder),
-	"yandex":              new(yandexbuilder.Builder),
 }
 
 // VendoredProvisioners are provisioner components that were once bundled with the
@@ -140,34 +88,186 @@ var VendoredProvisioners = map[string]packersdk.Provisioner{
 	"azure-dtlartifact": new(azuredtlartifactprovisioner.Provisioner),
 	"ansible":           new(ansibleprovisioner.Provisioner),
 	"ansible-local":     new(ansiblelocalprovisioner.Provisioner),
-	"chef-client":       new(chefclientprovisioner.Provisioner),
-	"chef-solo":         new(chefsoloprovisioner.Provisioner),
-	"converge":          new(convergeprovisioner.Provisioner),
-	"inspec":            new(inspecprovisioner.Provisioner),
-	"puppet-masterless": new(puppetmasterlessprovisioner.Provisioner),
-	"puppet-server":     new(puppetserverprovisioner.Provisioner),
-	"salt-masterless":   new(saltmasterlessprovisioner.Provisioner),
 }
 
 // VendoredPostProcessors are post-processor components that were once bundled with the
 // Packer core, but are now being imported from their counterpart plugin repos
 var VendoredPostProcessors = map[string]packersdk.PostProcessor{
-	"alicloud-import":      new(alicloudimportpostprocessor.PostProcessor),
 	"amazon-import":        new(anazibimportpostprocessor.PostProcessor),
-	"digitalocean-import":  new(digitaloceanimportpostprocessor.PostProcessor),
 	"docker-import":        new(dockerimportpostprocessor.PostProcessor),
 	"docker-push":          new(dockerpushpostprocessor.PostProcessor),
 	"docker-save":          new(dockersavepostprocessor.PostProcessor),
 	"docker-tag":           new(dockertagpostprocessor.PostProcessor),
 	"googlecompute-export": new(googlecomputeexportpostprocessor.PostProcessor),
 	"googlecompute-import": new(googlecomputeimportpostprocessor.PostProcessor),
-	"ucloud-import":        new(ucloudimportpostprocessor.PostProcessor),
 	"vagrant":              new(vagrantpostprocessor.PostProcessor),
 	"vagrant-cloud":        new(vagrantcloudpostprocessor.PostProcessor),
 	"vsphere-template":     new(vspheretemplatepostprocessor.PostProcessor),
 	"vsphere":              new(vspherepostprocessor.PostProcessor),
-	"yandex-export":        new(yandexexportpostprocessor.PostProcessor),
-	"yandex-import":        new(yandeximportpostprocessor.PostProcessor),
+}
+
+// bundledStatus is used to know if one of the bundled components is loaded from
+// an external plugin, or from the bundled plugins.
+//
+// We keep track of this to produce a warning if a user relies on one
+// such plugin, as they will be removed in a later version of Packer.
+var bundledStatus = map[string]bool{
+	"packer-builder-amazon-ebs":               false,
+	"packer-builder-amazon-chroot":            false,
+	"packer-builder-amazon-ebssurrogate":      false,
+	"packer-builder-amazon-ebsvolume":         false,
+	"packer-builder-amazon-instance":          false,
+	"packer-post-processor-amazon-import":     false,
+	"packer-datasource-amazon-ami":            false,
+	"packer-datasource-amazon-secretsmanager": false,
+
+	"packer-provisioner-ansible":       false,
+	"packer-provisioner-ansible-local": false,
+
+	"packer-provisioner-azure-dtlartifact": false,
+	"packer-builder-azure-arm":             false,
+	"packer-builder-azure-chroot":          false,
+	"packer-builder-azure-dtl":             false,
+
+	"packer-builder-docker":               false,
+	"packer-post-processor-docker-import": false,
+	"packer-post-processor-docker-push":   false,
+	"packer-post-processor-docker-save":   false,
+	"packer-post-processor-docker-tag":    false,
+
+	"packer-builder-googlecompute":               false,
+	"packer-post-processor-googlecompute-export": false,
+	"packer-post-processor-googlecompute-import": false,
+
+	"packer-builder-qemu": false,
+
+	"packer-builder-vagrant":              false,
+	"packer-post-processor-vagrant":       false,
+	"packer-post-processor-vagrant-cloud": false,
+
+	"packer-builder-virtualbox-iso": false,
+	"packer-builder-virtualbox-ovf": false,
+	"packer-builder-virtualbox-vm":  false,
+
+	"packer-builder-vmware-iso": false,
+	"packer-builder-vmware-vmx": false,
+
+	"packer-builder-vsphere-clone":           false,
+	"packer-builder-vsphere-iso":             false,
+	"packer-post-processor-vsphere-template": false,
+	"packer-post-processor-vsphere":          false,
+}
+
+// TrackBundledPlugin marks a component as loaded from Packer's bundled plugins
+// instead of from an externally loaded plugin.
+//
+// NOTE: `pluginName' must be in the format `packer-<type>-<component_name>'
+func TrackBundledPlugin(pluginName string) {
+	_, exists := bundledStatus[pluginName]
+	if !exists {
+		return
+	}
+
+	bundledStatus[pluginName] = true
+}
+
+var componentPluginMap = map[string]string{
+	"packer-builder-amazon-ebs":               "github.com/hashicorp/amazon",
+	"packer-builder-amazon-chroot":            "github.com/hashicorp/amazon",
+	"packer-builder-amazon-ebssurrogate":      "github.com/hashicorp/amazon",
+	"packer-builder-amazon-ebsvolume":         "github.com/hashicorp/amazon",
+	"packer-builder-amazon-instance":          "github.com/hashicorp/amazon",
+	"packer-post-processor-amazon-import":     "github.com/hashicorp/amazon",
+	"packer-datasource-amazon-ami":            "github.com/hashicorp/amazon",
+	"packer-datasource-amazon-secretsmanager": "github.com/hashicorp/amazon",
+
+	"packer-provisioner-ansible":       "github.com/hashicorp/ansible",
+	"packer-provisioner-ansible-local": "github.com/hashicorp/ansible",
+
+	"packer-provisioner-azure-dtlartifact": "github.com/hashicorp/azure",
+	"packer-builder-azure-arm":             "github.com/hashicorp/azure",
+	"packer-builder-azure-chroot":          "github.com/hashicorp/azure",
+	"packer-builder-azure-dtl":             "github.com/hashicorp/azure",
+
+	"packer-builder-docker":               "github.com/hashicorp/docker",
+	"packer-post-processor-docker-import": "github.com/hashicorp/docker",
+	"packer-post-processor-docker-push":   "github.com/hashicorp/docker",
+	"packer-post-processor-docker-save":   "github.com/hashicorp/docker",
+	"packer-post-processor-docker-tag":    "github.com/hashicorp/docker",
+
+	"packer-builder-googlecompute":               "github.com/hashicorp/googlecompute",
+	"packer-post-processor-googlecompute-export": "github.com/hashicorp/googlecompute",
+	"packer-post-processor-googlecompute-import": "github.com/hashicorp/googlecompute",
+
+	"packer-builder-qemu": "github.com/hashicorp/qemu",
+
+	"packer-builder-vagrant":              "github.com/hashicorp/vagrant",
+	"packer-post-processor-vagrant":       "github.com/hashicorp/vagrant",
+	"packer-post-processor-vagrant-cloud": "github.com/hashicorp/vagrant",
+
+	"packer-builder-virtualbox-iso": "github.com/hashicorp/virtualbox",
+	"packer-builder-virtualbox-ovf": "github.com/hashicorp/virtualbox",
+	"packer-builder-virtualbox-vm":  "github.com/hashicorp/virtualbox",
+
+	"packer-builder-vmware-iso": "github.com/hashicorp/vmware",
+	"packer-builder-vmware-vmx": "github.com/hashicorp/vmware",
+
+	"packer-builder-vsphere-clone":           "github.com/hashicorp/vsphere",
+	"packer-builder-vsphere-iso":             "github.com/hashicorp/vsphere",
+	"packer-post-processor-vsphere-template": "github.com/hashicorp/vsphere",
+	"packer-post-processor-vsphere":          "github.com/hashicorp/vsphere",
+}
+
+// compileBundledPluginList returns a list of plugins to import in a config
+//
+// This only works on bundled plugins and serves as a way to inform users that
+// they should not rely on a bundled plugin anymore, but give them recommendations
+// on how to manage those plugins instead.
+func compileBundledPluginList(componentMap map[string]struct{}) []string {
+	plugins := map[string]struct{}{}
+	for component := range componentMap {
+		plugin, ok := componentPluginMap[component]
+		if !ok {
+			log.Printf("Unknown bundled plugin component: %q", component)
+			continue
+		}
+
+		plugins[plugin] = struct{}{}
+	}
+
+	pluginList := make([]string, 0, len(plugins))
+	for plugin := range plugins {
+		pluginList = append(pluginList, plugin)
+	}
+
+	return pluginList
+}
+
+func generateRequiredPluginsBlock(plugins []string) string {
+	if len(plugins) == 0 {
+		return ""
+	}
+
+	buf := &strings.Builder{}
+	buf.WriteString(`
+packer {
+  required_plugins {`)
+
+	for _, plugin := range plugins {
+		pluginName := strings.Replace(plugin, "github.com/hashicorp/", "", 1)
+		fmt.Fprintf(buf, `
+    %s = {
+      source  = %q
+      version = "~> 1"
+    }`, pluginName, plugin)
+	}
+
+	buf.WriteString(`
+  }
+}
+`)
+
+	return buf.String()
 }
 
 // Upon init lets load up any plugins that were vendored manually into the default

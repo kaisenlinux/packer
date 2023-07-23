@@ -1,3 +1,247 @@
+## 1.9.2 (July 19, 2023)
+
+### NOTES:
+
+* Vendored plugins within Packer have not been updated. Plugin releases occur on
+     a regular basis to address issues and feature requests.
+     Please note that in an upcoming version of Packer, we will remove the last
+     bundled plugins from Packer.
+     Users are encouraged to use `packer init` for HCL2 templates or
+     `packer plugins install` with legacy JSON templates for installing external
+     plugins.
+
+* Packer will now warn when using bundled plugins. This feature will be removed in
+    a future version of the tool, so this warning is meant to bring awareness of the
+    upcoming change, and to help users update their environment/templates to be
+    ready for this.
+    [GH-12495](https://github.com/hashicorp/packer/pull/12495)
+
+### BUG FIXES:
+
+* Fixed a bug with how Packer was discovering plugins: in order to load
+     plugins, Packer would recursively scan all the known directories in which
+     we could have installed plugins. This caused unnecessary directory
+     walks and slowdowns upon invocation. Packer will now only check
+     for nested plugins within the directories used by commands such as `packer
+     init`, or `packer plugins install`, or as defined in PACKER_PLUGIN_PATH.
+     Refer to
+     [Packer's plugin directory documentation](https://developer.hashicorp.com/packer/docs/configure#packer-s-plugin-directory)
+     for details on how loading works.
+     [GH-12414](https://github.com/hashicorp/packer/pull/12414)
+
+* The `packer init` subcommand now bundles all the missing installed plugins into one
+    condensed warning, as opposed to one warning per missing plugin.
+    [GH-12506](https://github.com/hashicorp/packer/pull/12506)
+
+### PLUGINS:
+
+* packer-plugin-parallels: The Parallels plugin has been handed over to the Parallels
+     team. New releases for this plugin are available at
+     https://github.com/parallels/packer-plugin-parallels. This plugin is is no longer
+     being bundled in the Packer binary release. Existing references to the
+     plugin will continue to work but users are advised to update the
+     `required_plugins` block to use the new plugin source address.
+    [GH-12476](https://github.com/hashicorp/packer/pull/12476)
+    ```
+     required_plugins {
+       parallels = {
+         source  =  "github.com/parallels/parallels"
+         version =  "~> 1"
+        }
+    }
+    ```
+
+### IMPROVEMENTS:
+
+* The `hcl2_upgrade` subcommand will now add `required_plugins` to the template
+    generated from JSON for all our officially supported plugins.
+    [GH-12504](https://github.com/hashicorp/packer/pull/12504)
+
+## 1.9.1 (June 1, 2023)
+
+### BUG FIXES:
+
+* On May 16th 2023, HCP introduced multi-project support to the platform.
+    In order to use multiple projects in your organization, you will need to update Packer
+    to version 1.9.1 or above. Starting with 1.9.1, you may specify a project ID to push
+    builds to with the `HCP_PROJECT_ID` environment variable. If no project ID is specified,
+    Packer will pick the project with the oldest creation date. Older versions of Packer are
+    incompatible with multi-project support on HCP, and builds will fail for HCP
+    organizations with multiple projects on versions before 1.9.1.
+    [GH-12453](https://github.com/hashicorp/packer/pull/12453)
+
+## 1.9.0 (May 31, 2023)
+
+### NOTES:
+
+* **Breaking Change**: Iteration fingerprints used to be computed from the Git SHA of the
+     repository where the template is located when running packer build. This
+     changes with this release, and now fingerprints are automatically generated
+     as a ULID. This implies that continuing an existing iteration will require
+     users to define the fingerprint in the environment manually in order to
+     adopt this behaviour, otherwise, by default, a new iteration will be
+     created. This does not impact workflows where the fingerprint was defined
+     through the `HCP_PACKER_ITERATION_FINGERPRINT` environment variable, and
+     these builds will work exactly as they did before.
+     [GH-12172](https://github.com/hashicorp/packer/pull/12172)
+
+* **Breaking Change**: Community-maintained plugins bundled with the Packer binary have been removed.
+     These external plugin components are released independently of Packer core and can be installed
+     directly by the user. Users relying on the external plugin components listed below should refer
+     to the `packer plugins` sub-command and, if using HCL2, a `required_plugins` block to define a
+     list of plugins for building a template.
+
+### PLUGINS
+
+* Remove provisioner plugins for Chef, Converge, Puppet, Salt, and Inspec as
+     vendored plugins. These plugins have been previously archived and not
+     updated in release since being archived. These plugins can be installed
+     using `packer init` or with the Packer plugins sub-command `packer plugins install github.com/hashicorp/chef`.
+     [GH-12374](https://github.com/hashicorp/packer/pull/12374)
+
+* The following community plugins won't be bundled with Packer anymore:
+
+    * [Alicloud](https://github.com/hashicorp/packer-plugin-alicloud)
+    * [CloudStack](https://github.com/hashicorp/packer-plugin-cloudstack)
+    * [HCloud](https://github.com/hashicorp/packer-plugin-hcloud)
+    * [HyperOne](https://github.com/hashicorp/packer-plugin-hyperone)
+    * [Hyper-V](https://github.com/hashicorp/packer-plugin-hyperv)
+    * [JDCloud](https://github.com/hashicorp/packer-plugin-jdcloud)
+    * [LXC](https://github.com/hashicorp/packer-plugin-lxc)
+    * [LXD](https://github.com/hashicorp/packer-plugin-lxd)
+    * [NCloud](https://github.com/hashicorp/packer-plugin-ncloud)
+    * [OpenStack](https://github.com/hashicorp/packer-plugin-openstack)
+    * [Proxmox](https://github.com/hashicorp/packer-plugin-proxmox)
+    * [TencentCloud](https://github.com/hashicorp/packer-plugin-tencentcloud)
+    * [Triton](https://github.com/hashicorp/packer-plugin-triton)
+    * [Yandex](https://github.com/hashicorp/packer-plugin-yandex)
+
+    [GH-12436](https://github.com/hashicorp/packer/pull/12436)
+
+Users relying on these external plugin components should refer to the `packer plugins` sub-command and,
+if using HCL2, a `required_plugins` block to define a list of plugins to use for building a template.
+
+### IMPROVEMENTS:
+
+* core/hcp: Now, fingerprints used by HCP Packer are randomly generated ULIDs
+     instead of a Git SHA, and a new one is always generated, unless one is
+     specified in the environment.
+     [GH-12172](https://github.com/hashicorp/packer/pull/12172)
+
+### BUG FIXES:
+
+* Fix LDFLAGS for release pipelines: Between Packer 1.8.5 and Packer 1.8.7, changes
+    to the LDFLAGS in use for building the binaries for Packer had mistakenly
+    removed some compilation flags, leading to the final binaries not being stripped.
+    This change raised the size of the built binaries by as much as 45%.
+    In this release, we fixed the LDFLAGS during compilation, yielding leaner binaries.
+
+* Bumped gopsutil to v3. This fixes a macOS intermittent crash reported by the community
+    [GH-12430](https://github.com/hashicorp/packer/issues/12430)
+
+## 1.8.7 (May 4, 2023)
+
+### NOTES:
+* Vendored plugins within Packer have not been updated. Plugin releases occur on
+     a regular basis to address issues and feature requests. Users are encouraged
+     to use `packer init` for HCL2 templates or `packer plugins install` with
+     legacy JSON templates for installing external plugins. 
+
+* packer-plugin-digitalocean: The Digital Ocean Packer plugin has been handed
+     over to the Digital Ocean team. New releases for this plugin are available
+     at https://github.com/digitalocean/packer-plugin-digitalocean.
+	```
+	required_plugins {
+		digitalocean = {
+		 source =  "github.com/digitalocean/digitalocean"
+		 version = ">=1.1.1"
+		}
+	}
+	```
+* packer-plugin-linode: The Linode plugin has been handed over to the Linode
+     team. New releases for this plugin are available at
+     https://github.com/linode/packer-plugin-linode. This plugin is is no longer
+     being bundled in the Packer binary release. Existing references to the
+     plugin will continue to work but users are advised to update the
+     `required_plugins` block to use the new plugin source address.
+     [GH-12329](https://github.com/hashicorp/packer/pull/12329)
+    ```
+     required_plugins {
+       linode = {
+         source  =  "github.com/linode/linode"
+         version = ">=1.0.5"
+        }
+    }
+    ```
+* packer-plugin-ucloud: The UCloud plugin has been handed over to the UCloud
+     team. New releases for this plugin are available at
+     https://github.com/ucloud/packer-plugin-ucloud. This plugin is is no longer
+     being bundled in the Packer binary release. Existing references to the
+     plugin will continue to work but users are advised to update the
+     `required_plugins` block to use the new plugin source address.
+     [GH-12335](https://github.com/hashicorp/packer/pull/12335)
+    ```
+     required_plugins {
+        ucloud = {
+         source  =  "github.com/ucloud/ucloud"
+         version = ">=1.0.8"
+        }
+    }
+    ```
+* packer-plugin-profitbricks: The Profitbricks plugin has been removed as a
+     bundled plugin in Packer. New releases for this plugin are available at
+     https://github.com/hashicorp/packer-plugin-profitbricks. This plugin is is
+     no longer being bundled in the Packer binary release. Existing references
+     to the plugin will continue to work but users are advised to update the
+     `required_plugins` block to use the new plugin source address.
+     [GH-12385](https://github.com/hashicorp/packer/pull/12385)
+    ```
+     required_plugins {
+        ucloud = {
+         source  =  "github.com/hashicorp/profitbricks"
+         version = ">=1.0.2"
+        }
+    }
+    ```
+
+### PLUGINS
+* core: Migrate external Linode plugin to linode/packer-plugin-linode.
+     [GH-12329](https://github.com/hashicorp/packer/pull/12329)
+* core: Migrate external UCloud plugin to ucloud/packer-plugin-ucloud.
+     [GH-12335](https://github.com/hashicorp/packer/pull/12335)
+* core: Remove external plugin for Digital Ocean as a vendored plugin.
+     [GH-12376](https://github.com/hashicorp/packer/pull/12376)
+* core: Remove external plugins for Profitbricks and 1&1 as vendored plugins.
+     [GH-12385](https://github.com/hashicorp/packer/pull/12385)
+* docs: Add HCP Ready label to Oracle builder components.
+     [GH-12217](https://github.com/hashicorp/packer/pull/12217)
+
+
+### IMPROVEMENTS
+* cmd/console: Add config-type flag to command help.
+     [GH-12360](https://github.com/hashicorp/packer/pull/12360)
+* core: Add enhanced support to Packer telemetry for HCL2.
+     [GH-12319](https://github.com/hashicorp/packer/pull/12319)
+* Enhance zsh completion for the Packer command.
+     [GH-12356](https://github.com/hashicorp/packer/pull/12356),
+     [GH-12366](https://github.com/hashicorp/packer/pull/12366)
+
+### BUG FIXES
+* cmd/hcl2_upgrade: Fix a crash when running the hcl2_upgrade command against a
+     legacy JSON template containing user variables with an undefined variables
+     block. [GH-12257](https://github.com/hashicorp/packer/pull/12257)
+* core: Bump github.com/hashicorp/hcp-sdk-go to 0.36.0.
+     [GH-12292](https://github.com/hashicorp/packer/pull/12292)
+* core: Bump github.com/hashicorp/packer-plugin-sdk to 0.4.0 to address
+     CVE-2023-0475, CVE-2022-41723.
+     [GH-12306](https://github.com/hashicorp/packer/pull/12306)
+* core: Bump Go module version to 1.20
+     [GH-12380](https://github.com/hashicorp/packer/pull/12380)
+* core: Fix regression introduced in 1.8.6, where legacy JSON templates with
+     custom builder names are outputted to STDOUT as uninterpolated user
+     variables. [GH-12290](https://github.com/hashicorp/packer/pull/12290)
+
+
 ## 1.8.6 (February 15, 2023)
 
 ### NOTES:
@@ -8,13 +252,27 @@
      "<type>.mybuilder". This does not impact the behavior of options such as
      only or except, they will continue to work as they did before.)
 
+### PLUGINS:
+The following external plugins have been updated and pinned to address open
+    issues. Please see their respective changelogs for details on plugin
+    specific bug fixes and improvements.
+
+* alicloud@v1.0.7 - [CHANGELOG](https://github.com/hashicorp/packer-plugin-alicloud/releases/tag/v1.0.7)
+* amazon@v1.2.1 - [CHANGELOG](https://github.com/hashicorp/packer-plugin-amazon/releases/tag/v1.2.1)
+* azure@v1.4.0 - [CHANGELOG](https://github.com/hashicorp/packer-plugin-azure/releases/tag/v1.4.0)
+* googlecompute@v1.1.0 - [CHANGELOG](https://github.com/hashicorp/packer-plugin-googlecompute/releases/tag/v1.1.0)
+* proxmox@v1.1.1 - [CHANGELOG](https://github.com/hashicorp/packer-plugin-proxmox/releases/tag/v1.1.1)
+* tencentcloud@v1.0.6 - [CHANGELOG](https://github.com/hashicorp/packer-plugin-tencentcloud/releases/tag/v1.0.6)
+* qemu@v1.0.9 - [CHANGELOG](https://github.com/hashicorp/packer-plugin-qemu/releases/tag/v1.0.9)
+
+
 ### IMPROVEMENTS:
 * Bump bundled plugins to latest available version.
-     [GH-12271](https://github.com/hashicorp/packer/pull/12271)
+     [GH-12274](https://github.com/hashicorp/packer/pull/12274)
 * bump github.com/hashicorp/hcp-sdk-go from 0.28.0 to 0.29.0
      [GH-12163](https://github.com/hashicorp/packer/pull/12163)
-* Bump github.com/hashicorp/hcp-sdk-go from 0.33.0 to 0.34.0 
-     [GH-12262](https://github.com/hashicorp/packer/pull/12262)
+* Bump github.com/hashicorp/hcp-sdk-go from 0.33.0 to 0.34.0
+     [GH-12275](https://github.com/hashicorp/packer/pull/12275)
 * core/hcl2: Packer will no longer warn on excluded post-processors when using
      `-only/exlude` filters for running select builds.
      [GH-12187](https://github.com/hashicorp/packer/pull/12187)
@@ -31,6 +289,11 @@
 * core: Linux packages now have vendor label and set the default label to
      HashiCorp. This fix is implemented for any future releases, but will not be
      updated for historical releases.
+     [GH-12252](https://github.com/hashicorp/packer/pull/12252)
+* core/hcp: The bucket's description was not properly set in the bucket
+     object sent to HCP Packer leaving all newly created buckets with an empty
+     description. [GH-12235]
+     [GH-12235](https://github.com/hashicorp/packer/pull/12235)
 
 ## 1.8.5 (December 12, 2022)
 
@@ -218,7 +481,7 @@ required_plugins {
     advised to install the latest version of the plugin by running
     `packer plugins install github.com/outscale/outscale`. [GH-11912](https://github.com/hashicorp/packer/pull/11912)
 
-* packer-plugin-outscale:  The Scaleway Packer plugin managed by the Scaleway
+* packer-plugin-scaleway:  The Scaleway Packer plugin managed by the Scaleway
     team, since Packer 1.7.7, has been removed from the Packer binary. Users are
     advised to install the latest version of the plugin by running
     `packer plugins install github.com/scaleway/scaleway`. [GH-11912](https://github.com/hashicorp/packer/pull/11912)

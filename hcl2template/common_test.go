@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package hcl2template
 
 import (
@@ -363,6 +366,15 @@ var cmpOpts = []cmp.Option{
 	),
 	cmpopts.IgnoreFields(VariableAssignment{},
 		"Expr", // its an interface
+	),
+	cmpopts.IgnoreFields(packer.CoreBuild{},
+		"HCLConfig",
+	),
+	cmpopts.IgnoreFields(packer.CoreBuildProvisioner{},
+		"HCLConfig",
+	),
+	cmpopts.IgnoreFields(packer.CoreBuildPostProcessor{},
+		"HCLConfig",
 	),
 	cmpopts.IgnoreTypes(hcl2template.MockBuilder{}),
 	cmpopts.IgnoreTypes(HCL2Ref{}),

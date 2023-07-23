@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package addrs
 
 import (
@@ -94,9 +97,10 @@ func IsPluginPartNormalized(str string) (bool, error) {
 // This is intended primarily to parse the FQN-like strings
 //
 // The following are valid source string formats:
-// 		name
-// 		namespace/name
-// 		hostname/namespace/name
+//
+//	name
+//	namespace/name
+//	hostname/namespace/name
 func ParsePluginSourceString(str string) (*Plugin, hcl.Diagnostics) {
 	ret := &Plugin{
 		Hostname:  "",

@@ -80,6 +80,13 @@
     "isHcpPackerReady": true
   },
   {
+    "title": "External",
+    "path": "external",
+    "repo": "joomcode/packer-plugin-external",
+    "version": "latest",
+    "sourceBranch": "main"
+  },
+  {
     "title": "Git",
     "path": "git",
     "repo": "ethanmdavidson/packer-plugin-git",
@@ -154,8 +161,8 @@
   {
     "title": "Linode",
     "path": "linode",
-    "repo": "hashicorp/packer-plugin-linode",
-    "pluginTier": "community",
+    "repo": "linode/packer-plugin-linode",
+    "pluginTier": "verified",
     "version": "latest",
     "isHcpPackerReady": true
   },
@@ -199,6 +206,7 @@
     "path": "nutanix",
     "repo": "nutanix-cloud-native/packer-plugin-nutanix",
     "version": "latest",
+    "pluginTier": "verified",
     "sourceBranch": "main"
   },
   {
@@ -221,13 +229,15 @@
     "path": "outscale",
     "repo": "outscale/packer-plugin-outscale",
     "version": "latest",
-    "pluginTier": "verified"
+    "pluginTier": "verified",
+    "isHcpPackerReady": true
   },
   {
     "title": "Parallels",
     "path": "parallels",
-    "repo": "hashicorp/packer-plugin-parallels",
-    "version": "latest"
+    "repo": "parallels/packer-plugin-parallels",
+    "version": "latest",
+    "pluginTier": "verified"
   },
   {
     "title": "Profitbricks",
@@ -303,7 +313,7 @@
   {
     "title": "UCloud",
     "path": "ucloud",
-    "repo": "hashicorp/packer-plugin-ucloud",
+    "repo": "ucloud/packer-plugin-ucloud",
     "version": "latest",
     "pluginTier": "community"
   },
@@ -327,6 +337,14 @@
     "title": "VirtualBox",
     "path": "virtualbox",
     "repo": "hashicorp/packer-plugin-virtualbox",
+    "pluginTier": "official",
+    "version": "latest"
+  },
+  {
+    "title": "Volcengine",
+    "path": "volcengine",
+    "repo": "volcengine/packer-plugin-volcengine",
+    "pluginTier": "community",
     "version": "latest"
   },
   {

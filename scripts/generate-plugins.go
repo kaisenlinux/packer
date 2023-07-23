@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Generate Plugins is a small program that updates the lists of plugins in
 // command/plugin.go so they will be compiled into the main packer binary.
 //
@@ -96,10 +99,10 @@ type plugin struct {
 // makeMap creates a map named Name with type packer.Name that looks something
 // like this:
 //
-// var Builders = map[string]packersdk.Builder{
-// 	"amazon-chroot":   new(chroot.Builder),
-// 	"amazon-ebs":      new(ebs.Builder),
-// 	"amazon-instance": new(instance.Builder),
+//	var Builders = map[string]packersdk.Builder{
+//		"amazon-chroot":   new(chroot.Builder),
+//		"amazon-ebs":      new(ebs.Builder),
+//		"amazon-instance": new(instance.Builder),
 func makeMap(varName, varType string, items []plugin) string {
 	output := ""
 

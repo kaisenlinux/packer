@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package packer
 
 import (
@@ -37,6 +40,12 @@ type InitializeOptions struct {
 	SkipDatasourcesExecution bool
 }
 
+type PluginBinaryDetector interface {
+	// DetectPluginBinaries is used only for HCL2 templates, and loads required
+	// plugins if specified.
+	DetectPluginBinaries() hcl.Diagnostics
+}
+
 // The Handler handles all Packer things. This interface reflects the Packer
 // commands, ex: init, console ( evaluate ), fix config, inspect config, etc. To
 // run a build we will start the builds and then the core of Packer handles
@@ -50,6 +59,7 @@ type Handler interface {
 	BuildGetter
 	ConfigFixer
 	ConfigInspector
+	PluginBinaryDetector
 }
 
 //go:generate enumer -type FixConfigMode

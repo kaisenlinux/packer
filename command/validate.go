@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package command
 
 import (
@@ -62,9 +65,17 @@ func (c *ValidateCommand) RunContext(ctx context.Context, cla *ValidateArgs) int
 		return 0
 	}
 
-	diags := packerStarter.Initialize(packer.InitializeOptions{
+	diags := packerStarter.DetectPluginBinaries()
+	ret = writeDiags(c.Ui, nil, diags)
+	if ret != 0 {
+		return ret
+	}
+
+	diags = packerStarter.Initialize(packer.InitializeOptions{
 		SkipDatasourcesExecution: !cla.EvaluateDatasources,
 	})
+	bundledDiags := c.DetectBundledPlugins(packerStarter)
+	diags = append(bundledDiags, diags...)
 	ret = writeDiags(c.Ui, nil, diags)
 	if ret != 0 {
 		return ret

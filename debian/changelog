@@ -1,3 +1,11 @@
+packer (1.9.2-1kaisen) kaisen-packages; urgency=medium
+
+  * Import the 1.9.2 version
+  * Bump golang-go version required
+  * Many improvements of the packaging
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Sun, 23 Jul 2023 04:25:28 +0100
+
 packer (1.8.6-1kaisen) kaisen-packages; urgency=medium
 
   * Import the 1.8.6 version

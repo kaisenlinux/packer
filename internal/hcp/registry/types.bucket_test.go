@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package registry
 
 import (
@@ -11,11 +14,9 @@ import (
 )
 
 func createInitialTestBucket(t testing.TB) *Bucket {
-	t.Setenv("HCP_PACKER_BUILD_FINGERPRINT", "no-fingerprint-here")
-
 	t.Helper()
 	bucket := NewBucketWithIteration()
-	err := bucket.Iteration.Initialize(IterationOptions{})
+	err := bucket.Iteration.Initialize()
 	if err != nil {
 		t.Errorf("failed to initialize Bucket: %s", err)
 		return nil
@@ -290,7 +291,7 @@ func TestBucket_PopulateIteration(t *testing.T) {
 			mockService.BuildAlreadyDone = tt.buildCompleted
 
 			bucket := NewBucketWithIteration()
-			err := bucket.Iteration.Initialize(IterationOptions{})
+			err := bucket.Iteration.Initialize()
 			if err != nil {
 				t.Fatalf("failed when calling NewBucketWithIteration: %s", err)
 			}

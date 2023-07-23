@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package command
 
 import (
@@ -84,17 +87,27 @@ func (c *BuildCommand) RunContext(buildCtx context.Context, cla *BuildArgs) int 
 		return ret
 	}
 
-	diags := packerStarter.Initialize(packer.InitializeOptions{})
+	diags := packerStarter.DetectPluginBinaries()
 	ret = writeDiags(c.Ui, nil, diags)
 	if ret != 0 {
 		return ret
 	}
 
-	hcpRegistry, diags := registry.New(packerStarter)
+	diags = packerStarter.Initialize(packer.InitializeOptions{})
+	bundledDiags := c.DetectBundledPlugins(packerStarter)
+	diags = append(bundledDiags, diags...)
 	ret = writeDiags(c.Ui, nil, diags)
 	if ret != 0 {
 		return ret
 	}
+
+	hcpRegistry, diags := registry.New(packerStarter, c.Ui)
+	ret = writeDiags(c.Ui, nil, diags)
+	if ret != 0 {
+		return ret
+	}
+
+	defer hcpRegistry.IterationStatusSummary()
 
 	err := hcpRegistry.PopulateIteration(buildCtx)
 	if err != nil {

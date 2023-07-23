@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 //go:build !openbsd
 // +build !openbsd
 
@@ -6,7 +9,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/shirou/gopsutil/process"
+	"github.com/shirou/gopsutil/v3/process"
 )
 
 func checkProcess(currentPID int) (bool, error) {

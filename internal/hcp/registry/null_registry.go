@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package registry
 
 import (
@@ -25,3 +28,5 @@ func (r nullRegistry) CompleteBuild(
 ) ([]sdkpacker.Artifact, error) {
 	return artifacts, nil
 }
+
+func (r nullRegistry) IterationStatusSummary() {}
