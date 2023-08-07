@@ -11,6 +11,6 @@ Rules-Requires-Root: no
 XS-Go-Import-Path: github.com/hashicorp/packer
 
 Package: packer
-Architecture: any
-Depends: ${misc:Depends}, golang-go (>= 1.20)
+Architecture: arm64 amd64 i386
+Depends: ${misc:Depends}
 Description: Tool for creating identical machine images for multiple platforms from a single source configuration

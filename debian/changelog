@@ -1,3 +1,9 @@
+packer (1.9.2-2kaisen) kaisen-packages; urgency=medium
+
+  * Remove golang-go as package dependancy
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Mon, 07 Aug 2023 20:36:34 +0100
+
 packer (1.9.2-1kaisen) kaisen-packages; urgency=medium
 
   * Import the 1.9.2 version
