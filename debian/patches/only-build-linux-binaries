@@ -1,7 +1,7 @@
 Author: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
 
---- packer-1.8.0.orig/scripts/build.sh
-+++ packer-1.8.0/scripts/build.sh
+--- packer-1.9.4.orig/scripts/build.sh
++++ packer-1.9.4/scripts/build.sh
 @@ -2,8 +2,8 @@
  
  # This script builds the application from source for multiple platforms.

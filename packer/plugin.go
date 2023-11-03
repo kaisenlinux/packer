@@ -20,6 +20,11 @@ import (
 	plugingetter "github.com/hashicorp/packer/packer/plugin-getter"
 )
 
+var defaultChecksummer = plugingetter.Checksummer{
+	Type: "sha256",
+	Hash: sha256.New(),
+}
+
 // PluginConfig helps load and use packer plugins
 type PluginConfig struct {
 	KnownPluginFolders []string
@@ -29,23 +34,6 @@ type PluginConfig struct {
 	Provisioners       ProvisionerSet
 	PostProcessors     PostProcessorSet
 	DataSources        DatasourceSet
-
-	// Redirects are only set when a plugin was completely moved out; they allow
-	// telling where a plugin has moved by checking if a known component of this
-	// plugin is used. For example implicitly require the
-	// github.com/hashicorp/amazon plugin if it was moved out and the
-	// "amazon-ebs" plugin is used, but not found.
-	//
-	// Redirects will be bypassed if the redirected components are already found
-	// in their corresponding sets (Builders, Provisioners, PostProcessors,
-	// DataSources). That is, for example, if you manually put a single
-	// component plugin in the plugins folder.
-	//
-	// Example BuilderRedirects: "amazon-ebs" => "github.com/hashicorp/amazon"
-	BuilderRedirects       map[string]string
-	DatasourceRedirects    map[string]string
-	ProvisionerRedirects   map[string]string
-	PostProcessorRedirects map[string]string
 }
 
 // PACKERSPACE is used to represent the spaces that separate args for a command
@@ -80,7 +68,8 @@ func (c *PluginConfig) Discover() error {
 	}
 
 	if len(c.KnownPluginFolders) == 0 {
-		c.KnownPluginFolders = PluginFolders()
+		//PluginFolders should match the call in github.com/hahicorp/packer/main.go#loadConfig
+		c.KnownPluginFolders = PluginFolders(".")
 	}
 
 	// TODO after JSON is deprecated remove support for legacy component plugins.
@@ -227,6 +216,14 @@ func (c *PluginConfig) discoverSingle(glob string) (map[string]string, error) {
 			continue
 		}
 
+		if strings.Contains(strings.ToUpper(file), defaultChecksummer.FileExt()) {
+			log.Printf(
+				"[TRACE] Ignoring plugin match %s, which looks to be a checksum file",
+				match)
+			continue
+
+		}
+
 		// If the filename has a ".", trim up to there
 		if idx := strings.Index(file, ".exe"); idx >= 0 {
 			file = file[:idx]
@@ -239,7 +236,11 @@ func (c *PluginConfig) discoverSingle(glob string) (map[string]string, error) {
 		pluginName = strings.SplitN(pluginName, "_", 2)[0]
 
 		log.Printf("[INFO] Discovered potential plugin: %s = %s", pluginName, match)
-		res[pluginName] = match
+		pluginPath, err := filepath.Abs(match)
+		if err != nil {
+			pluginPath = match
+		}
+		res[pluginName] = pluginPath
 	}
 
 	return res, nil
@@ -379,7 +380,7 @@ func (c *PluginConfig) discoverInstalledComponents(path string) error {
 		APIVersionMajor: pluginsdk.APIVersionMajor,
 		APIVersionMinor: pluginsdk.APIVersionMinor,
 		Checksummers: []plugingetter.Checksummer{
-			{Type: "sha256", Hash: sha256.New()},
+			defaultChecksummer,
 		},
 	}
 
