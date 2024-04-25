@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package hcl2template
 
@@ -157,7 +157,7 @@ func (p *Parser) Parse(filename string, varFiles []string, argVars map[string]st
 	// Before we go further, we'll check to make sure this version can read
 	// all files, so we can produce a version-related error message rather than
 	// potentially-confusing downstream errors.
-	versionDiags := cfg.CheckCoreVersionRequirements(p.CorePackerVersion)
+	versionDiags := cfg.CheckCoreVersionRequirements(p.CorePackerVersion.Core())
 	diags = append(diags, versionDiags...)
 	if versionDiags.HasErrors() {
 		return cfg, diags
@@ -295,7 +295,6 @@ func filterVarsFromLogs(inputOrLocal Variables) {
 
 func (cfg *PackerConfig) Initialize(opts packer.InitializeOptions) hcl.Diagnostics {
 	diags := cfg.InputVariables.ValidateValues()
-	diags = append(diags, cfg.LocalVariables.ValidateValues()...)
 	diags = append(diags, cfg.evaluateDatasources(opts.SkipDatasourcesExecution)...)
 	diags = append(diags, checkForDuplicateLocalDefinition(cfg.LocalBlocks)...)
 	diags = append(diags, cfg.evaluateLocalVariables(cfg.LocalBlocks)...)

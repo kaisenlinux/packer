@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package command
 
@@ -31,7 +31,7 @@ func (c *ValidateCommand) Run(args []string) int {
 func (c *ValidateCommand) ParseArgs(args []string) (*ValidateArgs, int) {
 	var cfg ValidateArgs
 
-	flags := c.Meta.FlagSet("validate", FlagSetBuildFilter|FlagSetVars)
+	flags := c.Meta.FlagSet("validate")
 	flags.Usage = func() { c.Ui.Say(c.Help()) }
 	cfg.AddFlagSets(flags)
 	if err := flags.Parse(args); err != nil {
@@ -74,8 +74,6 @@ func (c *ValidateCommand) RunContext(ctx context.Context, cla *ValidateArgs) int
 	diags = packerStarter.Initialize(packer.InitializeOptions{
 		SkipDatasourcesExecution: !cla.EvaluateDatasources,
 	})
-	bundledDiags := c.DetectBundledPlugins(packerStarter)
-	diags = append(bundledDiags, diags...)
 	ret = writeDiags(c.Ui, nil, diags)
 	if ret != 0 {
 		return ret

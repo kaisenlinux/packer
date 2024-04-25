@@ -1,3 +1,10 @@
+packer (1.10.3-1kaisen) kaisen-packages; urgency=medium
+
+  * Import the 1.10.3 version
+  * Bump the version required of golang-go to 1.21
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Thu, 25 Apr 2024 09:37:49 +0200
+
 packer (1.9.4-1kaisen) kaisen-packages; urgency=medium
 
   * Import the 1.9.4 version

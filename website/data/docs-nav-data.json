@@ -730,6 +730,14 @@
             "path": "datasources/hcp"
           },
           {
+            "title": "Version",
+            "path": "datasources/hcp/hcp-packer-version"
+          },
+          {
+            "title": "Artifact",
+            "path": "datasources/hcp/hcp-packer-artifact"
+          },
+          {
             "title": "Iteration",
             "path": "datasources/hcp/hcp-packer-iteration"
           },
@@ -847,10 +855,6 @@
       {
         "title": "Installing Plugins",
         "path": "plugins/install-plugins"
-      },
-      {
-        "title": "External Plugins",
-        "href": "/plugins"
       },
       {
         "title": "Developing Plugins",

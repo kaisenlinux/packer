@@ -1,3 +1,214 @@
+## 1.10.3 (April 22, 2024)
+
+### NOTES
+* A LICENSE.txt file has been added to the Packer release artifacts.
+     [12981](https://github.com/hashicorp/packer/pull/12931)
+
+### FEATURES
+* Packer users can now track Packer version and plugin versions used for each
+     build artifact in HCP Packer.
+     [GH-12891](https://github.com/hashicorp/packer/pull/12891)
+     [GH-12910](https://github.com/hashicorp/packer/pull/12910)
+     [GH-12923](https://github.com/hashicorp/packer/pull/12923)
+     [GH-12926](https://github.com/hashicorp/packer/pull/12926)
+
+### SECURITY
+* Bump github.com/go-jose/go-jose/v3 to address GHSA-c5q2-7r4c-mv6g.
+     [GH-12928](https://github.com/hashicorp/packer/pull/12928)
+* Bump golang.org/x/net to v0.24.0 to address GO-2024-2687.
+     [GH-12924](https://github.com/hashicorp/packer/pull/12924)
+
+### BUG FIXES
+* cmd/fmt: Display information error when Packer `fmt` fails due to HCL2
+     parsing error. [GH-12870](https://github.com/hashicorp/packer/pull/12870)
+
+## 1.10.2 (March 6, 2024)
+
+### NOTES:
+* Continuing the work in in Packer v1.10.0 we introduced the ability to install
+     a locally sourced plugin using packer `plugins install --path`, this
+     release extends support to development plugin binaries - binaries that
+     report "dev" as part of their plugin version. Instead of manually placing a
+     downloaded binary into the executable or current working directory we
+     encourage you to run the command `packer plugins install –path <path-to-
+     downloaded-extracted-binary> github.com/hashicorp/happycloud` to install
+     the binary into a Packer compatible path.
+     [GH-12855](https://github.com/hashicorp/packer/pull/12855)
+
+### IMPROVEMENTS:
+* cmd/plugins: Add support for installing local development binaries to `packer plugins install`.
+     [GH-12855](https://github.com/hashicorp/packer/pull/12855)
+* core: Validate bucket name when using `hcp_packer_registry` block.
+     [GH-12820](https://github.com/hashicorp/packer/pull/12820)
+* core: Update github.com/hashicorp/hcp-sdk-go from 0.83.0 to 0.85.0.
+     [GH-12850](https://github.com/hashicorp/packer/pull/12850)
+     [GH-12827](https://github.com/hashicorp/packer/pull/12827)
+ 
+### BUG FIXES:
+* core/hcp: HCP Packer build failures properly distinguish between incompatible
+     plugins and general publishing errors.
+     [GH-12854](https://github.com/hashicorp/packer/pull/12854)
+     [GH-12835](https://github.com/hashicorp/packer/pull/12835)
+
+## 1.10.1 (January 30, 2024)
+
+### NOTES:
+* **HCP Packer** has been updated to follow an artifact-agnostic approach for 
+     publishing and consuming built artifacts. To best support the new approach, HCP Packer components within Packer have
+     been updated to use the v2 nomenclature when publishing build metadata to
+     HCP Packer. These changes include data source components for consuming HCP
+     Packer stored artifacts. The data source components [hcp-packer-version](https://developer.hashicorp.com/packer/docs/datasources/hcp/hcp-packer-version) 
+     and [hcp-packer-artifact](https://developer.hashicorp.com/packer/docs/datasources/hcp/hcp-packer-artifact) respectively replace, the now deprecated, 
+     [hcp-packer-iteration](https://developer.hashicorp.com/packer/docs/datasources/hcp/hcp-packer-iteration) 
+     and [hcp-packer-image](https://developer.hashicorp.com/packer/docs/datasources/hcp/hcp-packer-image)
+     component data sources. The added changes are compatible with all existing HCP Packer workflows and do not warrant any
+     immediate template changes by the user. However, we encourage all HCP Packer users to visit the updated 
+     HCP Packer [CHANGELOG](https://developer.hashicorp.com/hcp/docs/changelog) to familiarize themselves with the nomenclature changes. 
+     [GH-12794](https://github.com/hashicorp/packer/pull/12794) [GH-12799](https://github.com/hashicorp/packer/pull/12799)
+* The `hcp-packer-image` data source has been deprecated, please use HCP Packer
+     Artifact data source instead.
+     [GH-12794](https://github.com/hashicorp/packer/pull/12794)
+* The `hcp-packer-iteration` data source has been deprecated, please use HCP
+     Packer Version data source instead.
+     [GH-12794](https://github.com/hashicorp/packer/pull/12794)
+* The contextual variable `packer.iterationID` has been deprecated, please use
+     the new contextual variable `packer.versionFingerprint`. The iterationID
+     represents the HCP Packer iteration that build metadata has been publish
+     to, with this release an Iteration is now referred to as a Version and the
+     ID has been replaced by the Version Fingerprint.
+     [GH-12803](https://github.com/hashicorp/packer/pull/12803)
+
+### FEATURES:
+* **New Data source** `hcp-packer-artifact` The HCP Packer Artifact Data Source
+     retrieves information about an artifact from the HCP Packer Registry.
+     [GH-12794](https://github.com/hashicorp/packer/pull/12794)
+* **New Data source** `hcp-packer-version`  The HCP Packer Version Data Source
+     retrieves information about HCP Packer Version from the HCP Packer.
+     Registry. [GH-12794](https://github.com/hashicorp/packer/pull/12794)
+
+### SECURITY:
+* core: Bump Go dependencies to address various CVEs. [GH-12777](https://github.com/hashicorp/packer/pull/12777)
+* core: Bump github.com/cloudflare/circl to address GHSA-9763-4f94-gfch. [GH-12781](https://github.com/hashicorp/packer/pull/12781)
+
+### IMPROVEMENTS:
+* core: Bump github.com/hashicorp/hcp-sdk-go from 0.79.0 to 0.81.0
+     [GH-12792](https://github.com/hashicorp/packer/pull/12792)
+     [GH-12764](https://github.com/hashicorp/packer/pull/12764)
+* core: Update error messaging for HCP incompatible plugin builds.
+     [GH-12800](https://github.com/hashicorp/packer/pull/12800)
+* core: Update HCP Packer integration to use HCP Packer v2 nomenclature, with
+     this change HCP Packer iterations are now referred to as Versions, and
+     Images are now referred to as Artifacts. The data sources for interacting
+     with HCP Packer have been respectively renamed to align with the terminology
+     of Version and Artifact.
+     [GH-12794](https://github.com/hashicorp/packer/pull/12794)
+     [GH-12799](https://github.com/hashicorp/packer/pull/12799)
+* core: Update spacing for flags within Help text.
+     [GH-12742](https://github.com/hashicorp/packer/pull/12742)
+     [GH-12743](https://github.com/hashicorp/packer/pull/12743)
+
+
+## 1.10.0 (December 5, 2023)
+
+### NOTES:
+This release contains breaking changes for practitioner relying on plugins
+     previously bundled into Packer. As specified in the [Bundled Plugins Removal announcement](https://www.hashicorp.com/blog/announcing-the-removal-of-bundled-plugins-in-hashicorp-packer)
+     HashiCorp maintained plugins will no longer be shipped with Packer. 
+     Users are encouraged to use `packer init` or `packer plugins [...]` when managing required plugins
+     needed for executing their builds.
+     [GH-12660](https://github.com/hashicorp/packer/pull/12660)
+
+The affected plugins include:
+* [packer-plugin-amazon](https://github.com/hashicorp/packer-plugin-amazon) 
+* [packer-plugin-ansible](https://github.com/hashicorp/packer-plugin-ansible) 
+* [packer-plugin-azure](https://github.com/hashicorp/packer-plugin-azure) 
+* [packer-plugin-docker](https://github.com/hashicorp/packer-plugin-docker) 
+* [packer-plugin-googlecompute](https://github.com/hashicorp/packer-plugin-googlecompute) 
+* [packer-plugin-qemu](https://github.com/hashicorp/packer-plugin-qemu) 
+* [packer-plugin-vagrant](https://github.com/hashicorp/packer-plugin-vagrant) 
+* [packer-plugin-virtualbox](https://github.com/hashicorp/packer-plugin-virtualbox) 
+* [packer-plugin-vmware](https://github.com/hashicorp/packer-plugin-vmware) 
+* [packer-plugin-vsphere](https://github.com/hashicorp/packer-plugin-vsphere) 
+
+### SECURITY:
+* Bump github.com/go-jose/go-jose/v3 to address GO-2023-2334. There have been
+     no reported issues with Packer but we are bumping given that it is a
+     secondary
+     dependency. [GH-12723](https://github.com/hashicorp/packer/pull/12723)
+* Bump Go to 1.20.10 to Address CVE-2023-44487 / CVE-2023-39325.
+     [GH-12661](https://github.com/hashicorp/packer/pull/12661)
+* Bump Go to 1.20.11  CVE-2023-45283. There have been no reported issues with
+     Packer but we are bumping given its usage of the path/filepath pkg.
+     [GH-12690](https://github.com/hashicorp/packer/pull/12690)
+* Bump Packer Plugin SDK to v0.5.2.
+     [GH-12717](https://github.com/hashicorp/packer/pull/12717)
+
+### PLUGINS:
+
+* Removed all HashiCorp vendored plugins from being bundled into the Packer binary.
+[GH-12660](https://github.com/hashicorp/packer/pull/12660), [GH-12720](https://github.com/hashicorp/packer/pull/12720)
+* packer-plugin-hcloud: The Hetzner Cloud plugin has been handed over to the
+ Hetzner integrations team. New releases for this plugin are available at
+     https://github.com/hetznercloud/packer-plugin-hcloud. Existing references
+     to the plugin will continue to work but users are advised to update the
+     `required_plugins` block to use the new plugin source address.
+    ```
+    required_plugins {
+       parallels = {
+         source  =  "github.com/hetznercloud/hcloud"
+         version =  "~> 1"
+       }
+    }
+    ```
+### IMPROVEMENTS:
+* cmd/init: Warn users running `packer init` on configuration templates with a
+     missing `required_plugins` blocks.
+     [GH-12638](https://github.com/hashicorp/packer/pull/12638)
+* cmd/plugins: Add `--path` flag to `packer plugins install` subcommand to
+     support installation of plugins from a local binary rather than from
+     GitHub. [GH-12643](https://github.com/hashicorp/packer/pull/12643)
+* cmd/plugins: Install SHA256SUM file with 0644 perms.
+     [GH-12665](https://github.com/hashicorp/packer/pull/12665)
+* cmd/plugins: Remove SHA256SUM file on plugin removal.
+     [GH-12666](https://github.com/hashicorp/packer/pull/12666)
+* cmd/plugins: Remove will error if it fails to find the plugin being selected
+     for removal. [GH-12669](https://github.com/hashicorp/packer/pull/12669)
+* core/hcl2: Remove empty source file reference on unset variable errors.
+     [GH-12712](https://github.com/hashicorp/packer/pull/12712)
+* core/hcl: Improve the recursive execution of data sources with other data
+     source dependencies.
+     [GH-12608](https://github.com/hashicorp/packer/pull/12608)
+* core: Bump github.com/hashicorp/hcp-sdk-go from 0.73.0 to 0.74.0 -
+     [GH-12704](https://github.com/hashicorp/packer/pull/12704)
+* core: Bump Packer Plugin SDK to v0.5.2.
+     [GH-12717](https://github.com/hashicorp/packer/pull/12717)
+* core: Provide integration link as hint in error message if a plugin component
+     is unknown. [GH-12705](https://github.com/hashicorp/packer/pull/12705)
+* core: Update version output for `packer -v` and `packer --version` to match
+     `packer version`.
+     [GH-12569](https://github.com/hashicorp/packer/pull/12569)
+* docs: Update plugin installation guides with supported methods for 1.10.0 and
+     above. [GH-12713](https://github.com/hashicorp/packer/pull/12713)
+
+### BUG FIXES:
+
+* cmd/plugins: Update `packer plugin installed` to show all installed plugin
+     binaries, including any duplicate versions or binaries copied from a
+     different source URI.
+     [GH-12731](https://github.com/hashicorp/packer/pull/12731)
+
+## 1.9.5 (December 4, 2023)
+
+### SECURITY
+
+* Bump github.com/go-jose/go-jose/v3 to address GO-2023-2334.
+     [GH-12723](https://github.com/hashicorp/packer/pull/12723)
+
+### BUG FIXES:
+
+* Add VirtualBox as known plugin prefix to prevent endless bundled plugin warning.
+     [GH-12719](https://github.com/hashicorp/packer/pull/12719)
+
 ## 1.9.4 (August 18, 2023)
 
 ### BUG FIXES:
@@ -183,6 +394,15 @@ if using HCL2, a `required_plugins` block to define a list of plugins to use for
 
 * Bumped gopsutil to v3. This fixes a macOS intermittent crash reported by the community
     [GH-12430](https://github.com/hashicorp/packer/issues/12430)
+
+### HCP Packer -- Multi project support advisory
+
+If using HCP Packer to store metadata on your builds, please be aware that Packer
+does not support this feature yet, and as such, having multiple projects in your
+organization will make it impossible to use HCP Packer in this release.
+
+We are actively working on supporting this feature, which will be available in a
+subsequent release.
 
 ## 1.8.7 (May 4, 2023)
 

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 // This is the main package for the `packer` application.
 
@@ -9,7 +9,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -65,13 +64,13 @@ func realMain() int {
 		return 1
 	}
 	if logWriter == nil {
-		logWriter = ioutil.Discard
+		logWriter = io.Discard
 	}
 
 	packersdk.LogSecretFilter.SetOutput(logWriter)
 
 	// Disable logging here
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 
 	// We always send logs to a temporary file that we use in case
 	// there is a panic. Otherwise, we delete it.
@@ -250,6 +249,16 @@ func wrappedMain() int {
 			Version: version.Version,
 		},
 		Ui: ui,
+	}
+
+	//versionCLIHelper shortcuts "--version" and "-v" to just show the version
+	versionCLIHelper := &cli.CLI{
+		Args:    args,
+		Version: version.Version,
+	}
+	if versionCLIHelper.IsVersion() && versionCLIHelper.Version != "" {
+		// by default version flags ignore all other args so there is no need to persist the original args.
+		args = []string{"version"}
 	}
 
 	cli := &cli.CLI{
