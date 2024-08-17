@@ -50,12 +50,12 @@ install-build-deps: ## Install dependencies for bin build
 	@go install github.com/mitchellh/gox@v1.0.1
 
 install-gen-deps: ## Install dependencies for code generation
-	@GO111MODULE=on go install github.com/alvaroloes/enumer@master
+	@GO111MODULE=on go install github.com/dmarkham/enumer@master
 	@go install github.com/hashicorp/packer-plugin-sdk/cmd/packer-sdc@latest
 
 install-lint-deps: ## Install linter dependencies
 	@echo "==> Updating linter dependencies..."
-	@curl -sSfL -q https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin v1.52.0
+	@curl -sSfL -q https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin v1.54.0
 
 dev: ## Build and install a development build
 	@grep 'const VersionPrerelease = ""' version/version.go > /dev/null ; if [ $$? -eq 0 ]; then \

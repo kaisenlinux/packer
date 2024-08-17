@@ -86,6 +86,11 @@ func writeDiags(ui packersdk.Ui, files map[string]*hcl.File, diags hcl.Diagnosti
 }
 
 func (c *BuildCommand) RunContext(buildCtx context.Context, cla *BuildArgs) int {
+	// Set the release only flag if specified as argument
+	//
+	// This deactivates the capacity for Packer to load development binaries.
+	c.CoreConfig.Components.PluginConfig.ReleasesOnly = cla.ReleaseOnly
+
 	packerStarter, ret := c.GetConfig(&cla.MetaArgs)
 	if ret != 0 {
 		return ret
@@ -108,6 +113,7 @@ func (c *BuildCommand) RunContext(buildCtx context.Context, cla *BuildArgs) int 
 	if ret != 0 {
 		return ret
 	}
+	hcpRegistry.Metadata().Gather(GetCleanedBuildArgs(cla))
 
 	defer hcpRegistry.VersionStatusSummary()
 
@@ -432,6 +438,7 @@ Options:
   -var 'key=value'              Variable for templates, can be used multiple times.
   -var-file=path                JSON or HCL2 file containing user variables, can be used multiple times.
   -warn-on-undeclared-var       Display warnings for user variable files containing undeclared variables.
+  -ignore-prerelease-plugins    Disable the loading of prerelease plugin binaries (x.y.z-dev).
 `
 
 	return strings.TrimSpace(helpText)

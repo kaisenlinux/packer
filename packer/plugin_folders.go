@@ -4,6 +4,7 @@
 package packer
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -12,28 +13,25 @@ import (
 	"github.com/hashicorp/packer-plugin-sdk/pathing"
 )
 
-// PluginFolders returns the list of known plugin folders based on system.
-func PluginFolders(dirs ...string) []string {
-	res := []string{}
+var pathSep = fmt.Sprintf("%c", os.PathListSeparator)
 
+// PluginFolder returns the known plugin folder based on system.
+func PluginFolder() (string, error) {
 	if packerPluginPath := os.Getenv("PACKER_PLUGIN_PATH"); packerPluginPath != "" {
-		res = append(res, strings.Split(packerPluginPath, string(os.PathListSeparator))...)
-		return res
+		if strings.Contains(packerPluginPath, pathSep) {
+			return "", fmt.Errorf("Multiple paths are no longer supported for PACKER_PLUGIN_PATH.\n"+
+				"This should be defined as one of the following options for your environment:"+
+				"\n* PACKER_PLUGIN_PATH=%v", strings.Join(strings.Split(packerPluginPath, pathSep), "\n* PACKER_PLUGIN_PATH="))
+		}
+
+		return packerPluginPath, nil
 	}
 
-	if path, err := os.Executable(); err != nil {
-		log.Printf("[ERR] Error finding executable: %v", err)
-	} else {
-		res = append(res, filepath.Dir(path))
-	}
-
-	res = append(res, dirs...)
-
-	if cd, err := pathing.ConfigDir(); err != nil {
+	cd, err := pathing.ConfigDir()
+	if err != nil {
 		log.Printf("[ERR] Error loading config directory: %v", err)
-	} else {
-		res = append(res, filepath.Join(cd, "plugins"))
+		return "", err
 	}
 
-	return res
+	return filepath.Join(cd, "plugins"), nil
 }

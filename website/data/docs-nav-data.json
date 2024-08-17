@@ -444,6 +444,14 @@
                     "path": "templates/hcl_templates/functions/encoding/urlencode"
                   },
                   {
+                    "title": "textencodebase64",
+                    "path": "templates/hcl_templates/functions/encoding/textencodebase64"
+                  },
+                  {
+                    "title": "textdecodebase64",
+                    "path": "templates/hcl_templates/functions/encoding/textdecodebase64"
+                  },
+                  {
                     "title": "yamldecode",
                     "path": "templates/hcl_templates/functions/encoding/yamldecode"
                   },
@@ -843,6 +851,24 @@
     "path": "configure"
   },
   {
+    "title": "Release notes",
+    "routes": [
+      {
+        "title": "v1.11",
+        "path": "release-notes/v1_11"
+      }
+    ]
+  },
+  {
+    "title": "Upgrades",
+    "routes": [
+      {
+        "title": "Upgrade to v1.11",
+        "path": "upgrade/v1_11"
+      }
+    ]
+  },
+  {
     "divider": true
   },
   {
@@ -854,7 +880,7 @@
       },
       {
         "title": "Installing Plugins",
-        "path": "plugins/install-plugins"
+        "path": "plugins/install"
       },
       {
         "title": "Developing Plugins",
@@ -882,6 +908,10 @@
           {
             "title": "HCP Packer Support",
             "path": "plugins/creation/hcp-support"
+          },
+          {
+            "title": "Plugin Loading Specification",
+            "path": "plugins/creation/plugin-load-spec"
           }
         ]
       }

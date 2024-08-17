@@ -76,7 +76,7 @@ for more info.`)
 	}
 
 	opts := plugingetter.ListInstallationsOptions{
-		FromFolders: c.Meta.CoreConfig.Components.PluginConfig.KnownPluginFolders,
+		PluginDirectory: c.Meta.CoreConfig.Components.PluginConfig.PluginDirectory,
 		BinaryInstallationOptions: plugingetter.BinaryInstallationOptions{
 			OS:              runtime.GOOS,
 			ARCH:            runtime.GOARCH,
@@ -85,6 +85,7 @@ for more info.`)
 			Checksummers: []plugingetter.Checksummer{
 				{Type: "sha256", Hash: sha256.New()},
 			},
+			ReleasesOnly: true,
 		},
 	}
 
@@ -127,12 +128,25 @@ for more info.`)
 			}
 
 			if cla.Force && !cla.Upgrade {
-				pluginRequirement.VersionConstraints, _ = gversion.NewConstraint(fmt.Sprintf("=%s", installs[len(installs)-1].Version))
+				// Only place another constaint to the latest release
+				// binary, if any, otherwise this is essentially the same
+				// as an upgrade
+				var installVersion string
+				for _, install := range installs {
+					ver, _ := gversion.NewVersion(install.Version)
+					if ver.Prerelease() == "" {
+						installVersion = install.Version
+					}
+				}
+
+				if installVersion != "" {
+					pluginRequirement.VersionConstraints, _ = gversion.NewConstraint(fmt.Sprintf("=%s", installVersion))
+				}
 			}
 		}
 
 		newInstall, err := pluginRequirement.InstallLatest(plugingetter.InstallOptions{
-			InFolders:                 opts.FromFolders,
+			PluginDirectory:           opts.PluginDirectory,
 			BinaryInstallationOptions: opts.BinaryInstallationOptions,
 			Getters:                   getters,
 			Force:                     cla.Force,

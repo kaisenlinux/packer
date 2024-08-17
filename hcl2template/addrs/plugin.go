@@ -5,29 +5,40 @@ package addrs
 
 import (
 	"fmt"
+	"net/url"
+	"path"
 	"strings"
 
-	"github.com/hashicorp/hcl/v2"
 	"golang.org/x/net/idna"
 )
 
 // Plugin encapsulates a single plugin type.
 type Plugin struct {
-	Hostname  string
-	Namespace string
-	Type      string
+	Source string
 }
 
-func (p Plugin) RealRelativePath() string {
-	return p.Namespace + "/packer-plugin-" + p.Type
-}
-
+// Parts returns the list of components of the source URL, starting with the
+// host, and ending with the name of the plugin.
+//
+// This will correspond more or less to the filesystem hierarchy where
+// the plugin is installed.
 func (p Plugin) Parts() []string {
-	return []string{p.Hostname, p.Namespace, p.Type}
+	return strings.FieldsFunc(p.Source, func(r rune) bool {
+		return r == '/'
+	})
+}
+
+// Name returns the raw name of the plugin from its source
+//
+// Exemples:
+//   - "github.com/hashicorp/amazon" -> "amazon"
+func (p Plugin) Name() string {
+	parts := p.Parts()
+	return parts[len(parts)-1]
 }
 
 func (p Plugin) String() string {
-	return strings.Join(p.Parts(), "/")
+	return p.Source
 }
 
 // ParsePluginPart processes an addrs.Plugin namespace or type string
@@ -98,67 +109,55 @@ func IsPluginPartNormalized(str string) (bool, error) {
 //
 // The following are valid source string formats:
 //
-//	name
 //	namespace/name
 //	hostname/namespace/name
-func ParsePluginSourceString(str string) (*Plugin, hcl.Diagnostics) {
-	ret := &Plugin{
-		Hostname:  "",
-		Namespace: "",
-	}
-	var diags hcl.Diagnostics
+func ParsePluginSourceString(str string) (*Plugin, error) {
+	var errs []string
 
-	// split the source string into individual components
-	parts := strings.Split(str, "/")
-	if len(parts) != 3 {
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "Invalid plugin source string",
-			Detail:   `The "source" attribute must be in the format "hostname/namespace/name"`,
-		})
-		return nil, diags
+	if strings.HasPrefix(str, "/") {
+		errs = append(errs, "A source URL must not start with a '/' character.")
 	}
 
-	// check for an invalid empty string in any part
-	for i := range parts {
-		if parts[i] == "" {
-			diags = diags.Append(&hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  "Invalid plugin source string",
-				Detail:   `The "source" attribute must be in the format "hostname/namespace/name"`,
-			})
-			return nil, diags
+	if strings.HasSuffix(str, "/") {
+		errs = append(errs, "A source URL must not end with a '/' character.")
+	}
+
+	if strings.Count(str, "/") < 2 {
+		errs = append(errs, "A source URL must at least contain a host and a path with 2 components")
+	}
+
+	url, err := url.Parse(str)
+	if err != nil {
+		errs = append(errs, fmt.Sprintf("Failed to parse source URL: %s", err))
+	}
+
+	if url != nil && url.Scheme != "" {
+		errs = append(errs, "A source URL must not contain a scheme (e.g. https://).")
+	}
+
+	if url != nil && url.RawQuery != "" {
+		errs = append(errs, "A source URL must not contain a query (e.g. ?var=val)")
+	}
+
+	if url != nil && url.Fragment != "" {
+		errs = append(errs, "A source URL must not contain a fragment (e.g. #anchor).")
+	}
+
+	if errs != nil {
+		errsMsg := &strings.Builder{}
+		for _, err := range errs {
+			fmt.Fprintf(errsMsg, "* %s\n", err)
 		}
+
+		return nil, fmt.Errorf("The provided source URL is invalid.\nThe following errors have been discovered:\n%s\nA valid source looks like \"github.com/hashicorp/happycloud\"", errsMsg)
 	}
 
 	// check the 'name' portion, which is always the last part
-	givenName := parts[len(parts)-1]
-	name, err := ParsePluginPart(givenName)
+	_, givenName := path.Split(str)
+	_, err = ParsePluginPart(givenName)
 	if err != nil {
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "Invalid plugin type",
-			Detail:   fmt.Sprintf(`Invalid plugin type %q in source %q: %s"`, givenName, str, err),
-		})
-		return nil, diags
+		return nil, fmt.Errorf(`Invalid plugin type %q in source: %s"`, givenName, err)
 	}
-	ret.Type = name
-
-	// the namespace is always the second-to-last part
-	givenNamespace := parts[len(parts)-2]
-	namespace, err := ParsePluginPart(givenNamespace)
-	if err != nil {
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "Invalid plugin namespace",
-			Detail:   fmt.Sprintf(`Invalid plugin namespace %q in source %q: %s"`, namespace, str, err),
-		})
-		return nil, diags
-	}
-	ret.Namespace = namespace
-
-	// the hostname is always the first part in a three-part source string
-	ret.Hostname = parts[0]
 
 	// Due to how plugin executables are named and plugin git repositories
 	// are conventionally named, it's a reasonable and
@@ -171,8 +170,8 @@ func ParsePluginSourceString(str string) (*Plugin, hcl.Diagnostics) {
 	// packer-plugin- prefix to help them self-correct.
 	const redundantPrefix = "packer-"
 	const userErrorPrefix = "packer-plugin-"
-	if strings.HasPrefix(ret.Type, redundantPrefix) {
-		if strings.HasPrefix(ret.Type, userErrorPrefix) {
+	if strings.HasPrefix(givenName, redundantPrefix) {
+		if strings.HasPrefix(givenName, userErrorPrefix) {
 			// Likely user error. We only return this specialized error if
 			// whatever is after the prefix would otherwise be a
 			// syntactically-valid plugin type, so we don't end up advising
@@ -181,32 +180,35 @@ func ParsePluginSourceString(str string) (*Plugin, hcl.Diagnostics) {
 			// (This is mainly just for robustness, because the validation
 			// we already did above should've rejected most/all ways for
 			// the suggestedType to end up invalid here.)
-			suggestedType := ret.Type[len(userErrorPrefix):]
+			suggestedType := strings.Replace(givenName, userErrorPrefix, "", -1)
 			if _, err := ParsePluginPart(suggestedType); err == nil {
-				suggestedAddr := ret
-				suggestedAddr.Type = suggestedType
-				diags = diags.Append(&hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "Invalid plugin type",
-					Detail: fmt.Sprintf("Plugin source %q has a type with the prefix %q, which isn't valid. "+
-						"Although that prefix is often used in the names of version control repositories for Packer plugins, "+
-						"plugin source strings should not include it.\n"+
-						"\nDid you mean %q?", ret, userErrorPrefix, suggestedAddr),
-				})
-				return nil, diags
+				return nil, fmt.Errorf("Plugin source has a type with the prefix %q, which isn't valid.\n"+
+					"Although that prefix is often used in the names of version control repositories "+
+					"for Packer plugins, plugin source strings should not include it.\n"+
+					"\nDid you mean %q?", userErrorPrefix, suggestedType)
 			}
 		}
 		// Otherwise, probably instead an incorrectly-named plugin, perhaps
 		// arising from a similar instinct to what causes there to be
 		// thousands of Python packages on PyPI with "python-"-prefixed
 		// names.
-		diags = diags.Append(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  "Invalid plugin type",
-			Detail:   fmt.Sprintf("Plugin source %q has a type with the prefix %q, which isn't allowed because it would be redundant to name a Packer plugin with that prefix. If you are the author of this plugin, rename it to not include the prefix.", ret, redundantPrefix),
-		})
-		return nil, diags
+		return nil, fmt.Errorf("Plugin source has a type with the %q prefix, which isn't valid.\n"+
+			"If you are the author of this plugin, rename it to not include the prefix.\n"+
+			"Ex: %q",
+			redundantPrefix,
+			strings.Replace(givenName, redundantPrefix, "", 1))
 	}
 
-	return ret, diags
+	plug := &Plugin{
+		Source: str,
+	}
+	if len(plug.Parts()) > 16 {
+		return nil, fmt.Errorf("The source URL must have at most 16 components, and the one provided has %d.\n"+
+			"This is unsupported by Packer, please consider using a source that has less components to it.\n"+
+			"If this is a blocking issue for you, please open an issue to ask for supporting more "+
+			"components to the source URI.",
+			len(plug.Parts()))
+	}
+
+	return plug, nil
 }

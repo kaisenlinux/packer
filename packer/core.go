@@ -136,7 +136,18 @@ func NewCore(c *CoreConfig) *Core {
 // DetectPluginBinaries is used to load required plugins from the template,
 // since it is unsupported in JSON, this is essentially a no-op.
 func (c *Core) DetectPluginBinaries() hcl.Diagnostics {
-	return nil
+	var diags hcl.Diagnostics
+
+	err := c.components.PluginConfig.Discover()
+	if err != nil {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "Failed to discover installed plugins",
+			Detail:   err.Error(),
+		})
+	}
+
+	return diags
 }
 
 func (c *Core) Initialize(_ InitializeOptions) hcl.Diagnostics {
@@ -880,7 +891,7 @@ func (c *Core) renderVarsRecursively() (*interpolate.Context, error) {
 		for _, kv := range sortedMap {
 			// Interpolate the default
 			renderedV, err := interpolate.RenderRegex(kv.Value, ctx, renderFilter)
-			switch err.(type) {
+			switch err := err.(type) {
 			case nil:
 				// We only get here if interpolation has succeeded, so something is
 				// different in this loop than in the last one.
@@ -899,8 +910,7 @@ func (c *Core) renderVarsRecursively() (*interpolate.Context, error) {
 					shouldRetry = true
 				}
 			case ttmp.ExecError:
-				castError := err.(ttmp.ExecError)
-				if strings.Contains(castError.Error(), interpolate.ErrVariableNotSetString) {
+				if strings.Contains(err.Error(), interpolate.ErrVariableNotSetString) {
 					shouldRetry = true
 					failedInterpolation = fmt.Sprintf(`"%s": "%s"; error: %s`, kv.Key, kv.Value, err)
 				} else {
@@ -928,7 +938,6 @@ func (c *Core) renderVarsRecursively() (*interpolate.Context, error) {
 				}
 			}
 		}
-		deleteKeys = []string{}
 	}
 
 	if !changed && shouldRetry {

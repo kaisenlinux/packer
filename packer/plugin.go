@@ -5,42 +5,40 @@ package packer
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
-	"sort"
 	"strings"
+	"sync"
 
 	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
 	pluginsdk "github.com/hashicorp/packer-plugin-sdk/plugin"
 	plugingetter "github.com/hashicorp/packer/packer/plugin-getter"
 )
 
-var defaultChecksummer = plugingetter.Checksummer{
-	Type: "sha256",
-	Hash: sha256.New(),
-}
-
 // PluginConfig helps load and use packer plugins
 type PluginConfig struct {
-	KnownPluginFolders []string
-	PluginMinPort      int
-	PluginMaxPort      int
-	Builders           BuilderSet
-	Provisioners       ProvisionerSet
-	PostProcessors     PostProcessorSet
-	DataSources        DatasourceSet
+	PluginDirectory string
+	PluginMinPort   int
+	PluginMaxPort   int
+	Builders        BuilderSet
+	Provisioners    ProvisionerSet
+	PostProcessors  PostProcessorSet
+	DataSources     DatasourceSet
+	ReleasesOnly    bool
 }
 
 // PACKERSPACE is used to represent the spaces that separate args for a command
 // without being confused with spaces in the path to the command itself.
 const PACKERSPACE = "-PACKERSPACE-"
 
-// Discover discovers plugins.
+var extractPluginBasename = regexp.MustCompile("^packer-plugin-([^_]+)")
+
+// Discover discovers the latest installed version of each installed plugin.
 //
 // Search the directory of the executable, then the plugins directory, and
 // finally the CWD, in that order. Any conflicts will overwrite previously
@@ -67,183 +65,57 @@ func (c *PluginConfig) Discover() error {
 		return nil
 	}
 
-	if len(c.KnownPluginFolders) == 0 {
-		//PluginFolders should match the call in github.com/hahicorp/packer/main.go#loadConfig
-		c.KnownPluginFolders = PluginFolders(".")
+	if c.PluginDirectory == "" {
+		c.PluginDirectory, _ = PluginFolder()
 	}
 
-	// TODO after JSON is deprecated remove support for legacy component plugins.
-	for _, knownFolder := range c.KnownPluginFolders {
-		if err := c.discoverLegacyMonoComponents(knownFolder); err != nil {
-			return err
-		}
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
 	}
 
-	// Pick last folder as it's the one with the highest priority
-	// This is the same logic used when installing plugins via Packer's plugin installation commands.
-	pluginInstallationPath := c.KnownPluginFolders[len(c.KnownPluginFolders)-1]
-	if err := c.discoverInstalledComponents(pluginInstallationPath); err != nil {
+	installations, err := plugingetter.Requirement{}.ListInstallations(plugingetter.ListInstallationsOptions{
+		PluginDirectory: c.PluginDirectory,
+		BinaryInstallationOptions: plugingetter.BinaryInstallationOptions{
+			OS:              runtime.GOOS,
+			ARCH:            runtime.GOARCH,
+			Ext:             ext,
+			APIVersionMajor: pluginsdk.APIVersionMajor,
+			APIVersionMinor: pluginsdk.APIVersionMinor,
+			Checksummers: []plugingetter.Checksummer{
+				{Type: "sha256", Hash: sha256.New()},
+			},
+			ReleasesOnly: c.ReleasesOnly,
+		},
+	})
+	if err != nil {
 		return err
 	}
 
-	// Manually installed plugins take precedence over all. Duplicate plugins installed
-	// prior to the packer plugins install command should be removed by user to avoid overrides.
-	for _, knownFolder := range c.KnownPluginFolders {
-		pluginPaths, err := c.discoverSingle(filepath.Join(knownFolder, "packer-plugin-*"))
+	// Map of plugin basename to executable
+	//
+	// We'll use that later to register the components for each plugin
+	pluginMap := map[string]string{}
+	for _, install := range installations {
+		pluginBasename := filepath.Base(install.BinaryPath)
+		matches := extractPluginBasename.FindStringSubmatch(pluginBasename)
+		if len(matches) != 2 {
+			log.Printf("[INFO] - plugin %q could not have its name matched, ignoring", pluginBasename)
+			continue
+		}
+
+		pluginName := matches[1]
+		pluginMap[pluginName] = install.BinaryPath
+	}
+
+	for name, path := range pluginMap {
+		err := c.DiscoverMultiPlugin(name, path)
 		if err != nil {
 			return err
 		}
-		for pluginName, pluginPath := range pluginPaths {
-			// Test pluginPath points to an executable
-			if _, err := exec.LookPath(pluginPath); err != nil {
-				log.Printf("[WARN] %q is not executable; skipping", pluginPath)
-				continue
-			}
-			if err := c.DiscoverMultiPlugin(pluginName, pluginPath); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (c *PluginConfig) discoverLegacyMonoComponents(path string) error {
-	var err error
-	log.Printf("[TRACE] discovering plugins in %s", path)
-
-	if !filepath.IsAbs(path) {
-		path, err = filepath.Abs(path)
-		if err != nil {
-			return err
-		}
-	}
-	var externallyUsed []string
-
-	pluginPaths, err := c.discoverSingle(filepath.Join(path, "packer-builder-*"))
-	if err != nil {
-		return err
-	}
-	for pluginName, pluginPath := range pluginPaths {
-		newPath := pluginPath // this needs to be stored in a new variable for the func below
-		c.Builders.Set(pluginName, func() (packersdk.Builder, error) {
-			return c.Client(newPath).Builder()
-		})
-		externallyUsed = append(externallyUsed, pluginName)
-	}
-	if len(externallyUsed) > 0 {
-		sort.Strings(externallyUsed)
-		log.Printf("[INFO] using external builders: %v", externallyUsed)
-		externallyUsed = nil
-	}
-
-	pluginPaths, err = c.discoverSingle(filepath.Join(path, "packer-post-processor-*"))
-	if err != nil {
-		return err
-	}
-	for pluginName, pluginPath := range pluginPaths {
-		newPath := pluginPath // this needs to be stored in a new variable for the func below
-		c.PostProcessors.Set(pluginName, func() (packersdk.PostProcessor, error) {
-			return c.Client(newPath).PostProcessor()
-		})
-		externallyUsed = append(externallyUsed, pluginName)
-	}
-	if len(externallyUsed) > 0 {
-		sort.Strings(externallyUsed)
-		log.Printf("using external post-processors %v", externallyUsed)
-		externallyUsed = nil
-	}
-
-	pluginPaths, err = c.discoverSingle(filepath.Join(path, "packer-provisioner-*"))
-	if err != nil {
-		return err
-	}
-	for pluginName, pluginPath := range pluginPaths {
-		newPath := pluginPath // this needs to be stored in a new variable for the func below
-		c.Provisioners.Set(pluginName, func() (packersdk.Provisioner, error) {
-			return c.Client(newPath).Provisioner()
-		})
-		externallyUsed = append(externallyUsed, pluginName)
-	}
-	if len(externallyUsed) > 0 {
-		sort.Strings(externallyUsed)
-		log.Printf("using external provisioners %v", externallyUsed)
-		externallyUsed = nil
-	}
-
-	pluginPaths, err = c.discoverSingle(filepath.Join(path, "packer-datasource-*"))
-	if err != nil {
-		return err
-	}
-	for pluginName, pluginPath := range pluginPaths {
-		newPath := pluginPath // this needs to be stored in a new variable for the func below
-		c.DataSources.Set(pluginName, func() (packersdk.Datasource, error) {
-			return c.Client(newPath).Datasource()
-		})
-		externallyUsed = append(externallyUsed, pluginName)
-	}
-	if len(externallyUsed) > 0 {
-		sort.Strings(externallyUsed)
-		log.Printf("using external datasource %v", externallyUsed)
 	}
 
 	return nil
-}
-
-func (c *PluginConfig) discoverSingle(glob string) (map[string]string, error) {
-	matches, err := filepath.Glob(glob)
-	if err != nil {
-		return nil, err
-	}
-	var prefix string
-	res := make(map[string]string)
-	// Sort the matches so we add the newer version of a plugin last
-	sort.Strings(matches)
-	prefix = filepath.Base(glob)
-	prefix = prefix[:strings.Index(prefix, "*")]
-	for _, match := range matches {
-		file := filepath.Base(match)
-		// skip folders like packer-plugin-sdk
-		if stat, err := os.Stat(file); err == nil && stat.IsDir() {
-			continue
-		}
-
-		// On Windows, ignore any plugins that don't end in .exe.
-		// We could do a full PATHEXT parse, but this is probably good enough.
-		if runtime.GOOS == "windows" && strings.ToLower(filepath.Ext(file)) != ".exe" {
-			log.Printf(
-				"[TRACE] Ignoring plugin match %s, no exe extension",
-				match)
-			continue
-		}
-
-		if strings.Contains(strings.ToUpper(file), defaultChecksummer.FileExt()) {
-			log.Printf(
-				"[TRACE] Ignoring plugin match %s, which looks to be a checksum file",
-				match)
-			continue
-
-		}
-
-		// If the filename has a ".", trim up to there
-		if idx := strings.Index(file, ".exe"); idx >= 0 {
-			file = file[:idx]
-		}
-
-		// Look for foo-bar-baz. The plugin name is "baz"
-		pluginName := file[len(prefix):]
-		// multi-component plugins installed via the plugins subcommand will have a name that looks like baz_vx.y.z_x5.0_darwin_arm64.
-		// After the split the plugin name is "baz".
-		pluginName = strings.SplitN(pluginName, "_", 2)[0]
-
-		log.Printf("[INFO] Discovered potential plugin: %s = %s", pluginName, match)
-		pluginPath, err := filepath.Abs(match)
-		if err != nil {
-			pluginPath = match
-		}
-		res[pluginName] = pluginPath
-	}
-
-	return res, nil
 }
 
 // DiscoverMultiPlugin takes the description from a multi-component plugin
@@ -254,13 +126,9 @@ func (c *PluginConfig) discoverSingle(glob string) (map[string]string, error) {
 // if the "packer-plugin-amazon" binary had an "ebs" builder one could use
 // the "amazon-ebs" builder.
 func (c *PluginConfig) DiscoverMultiPlugin(pluginName, pluginPath string) error {
-	out, err := exec.Command(pluginPath, "describe").Output()
+	desc, err := plugingetter.GetPluginDescription(pluginPath)
 	if err != nil {
-		return err
-	}
-	var desc pluginsdk.SetDescription
-	if err := json.Unmarshal(out, &desc); err != nil {
-		return err
+		return fmt.Errorf("failed to get plugin description from executable %q: %s", pluginPath, err)
 	}
 
 	pluginPrefix := pluginName + "-"
@@ -276,11 +144,13 @@ func (c *PluginConfig) DiscoverMultiPlugin(pluginName, pluginPath string) error 
 		if builderName == pluginsdk.DEFAULT_NAME {
 			key = pluginName
 		}
+		if c.Builders.Has(key) {
+			continue
+		}
 		c.Builders.Set(key, func() (packersdk.Builder, error) {
 			return c.Client(pluginPath, "start", "builder", builderName).Builder()
 		})
-		PluginsDetailsStorage[fmt.Sprintf("%q-%q", PluginComponentBuilder, key)] = pluginDetails
-
+		GlobalPluginsDetailsStore.SetBuilder(key, pluginDetails)
 	}
 
 	if len(desc.Builders) > 0 {
@@ -293,10 +163,13 @@ func (c *PluginConfig) DiscoverMultiPlugin(pluginName, pluginPath string) error 
 		if postProcessorName == pluginsdk.DEFAULT_NAME {
 			key = pluginName
 		}
+		if c.PostProcessors.Has(key) {
+			continue
+		}
 		c.PostProcessors.Set(key, func() (packersdk.PostProcessor, error) {
 			return c.Client(pluginPath, "start", "post-processor", postProcessorName).PostProcessor()
 		})
-		PluginsDetailsStorage[fmt.Sprintf("%q-%q", PluginComponentPostProcessor, key)] = pluginDetails
+		GlobalPluginsDetailsStore.SetPostProcessor(key, pluginDetails)
 	}
 
 	if len(desc.PostProcessors) > 0 {
@@ -309,10 +182,13 @@ func (c *PluginConfig) DiscoverMultiPlugin(pluginName, pluginPath string) error 
 		if provisionerName == pluginsdk.DEFAULT_NAME {
 			key = pluginName
 		}
+		if c.Provisioners.Has(key) {
+			continue
+		}
 		c.Provisioners.Set(key, func() (packersdk.Provisioner, error) {
 			return c.Client(pluginPath, "start", "provisioner", provisionerName).Provisioner()
 		})
-		PluginsDetailsStorage[fmt.Sprintf("%q-%q", PluginComponentProvisioner, key)] = pluginDetails
+		GlobalPluginsDetailsStore.SetProvisioner(key, pluginDetails)
 
 	}
 	if len(desc.Provisioners) > 0 {
@@ -325,10 +201,13 @@ func (c *PluginConfig) DiscoverMultiPlugin(pluginName, pluginPath string) error 
 		if datasourceName == pluginsdk.DEFAULT_NAME {
 			key = pluginName
 		}
+		if c.DataSources.Has(key) {
+			continue
+		}
 		c.DataSources.Set(key, func() (packersdk.Datasource, error) {
 			return c.Client(pluginPath, "start", "datasource", datasourceName).Datasource()
 		})
-		PluginsDetailsStorage[fmt.Sprintf("%q-%q", PluginComponentDataSource, key)] = pluginDetails
+		GlobalPluginsDetailsStore.SetDataSource(key, pluginDetails)
 	}
 	if len(desc.Datasources) > 0 {
 		log.Printf("found external %v datasource from %s plugin", desc.Datasources, pluginName)
@@ -381,60 +260,6 @@ func (c *PluginConfig) Client(path string, args ...string) *PluginClient {
 	return NewClient(&config)
 }
 
-// discoverInstalledComponents scans the provided path for plugins installed by running packer plugins install or packer init.
-// Valid plugins contain a matching system binary and valid checksum file.
-func (c *PluginConfig) discoverInstalledComponents(path string) error {
-	//Check for installed plugins using the `packer plugins install` command
-	binInstallOpts := plugingetter.BinaryInstallationOptions{
-		OS:              runtime.GOOS,
-		ARCH:            runtime.GOARCH,
-		APIVersionMajor: pluginsdk.APIVersionMajor,
-		APIVersionMinor: pluginsdk.APIVersionMinor,
-		Checksummers: []plugingetter.Checksummer{
-			defaultChecksummer,
-		},
-	}
-
-	if runtime.GOOS == "windows" {
-		binInstallOpts.Ext = ".exe"
-	}
-
-	pluginPath := filepath.Join(path, "*", "*", "*", fmt.Sprintf("packer-plugin-*%s", binInstallOpts.FilenameSuffix()))
-	pluginPaths, err := c.discoverSingle(pluginPath)
-	if err != nil {
-		return err
-	}
-
-	for pluginName, pluginPath := range pluginPaths {
-		var checksumOk bool
-		for _, checksummer := range binInstallOpts.Checksummers {
-			cs, err := checksummer.GetCacheChecksumOfFile(pluginPath)
-			if err != nil {
-				log.Printf("[TRACE] GetChecksumOfFile(%q) failed: %v", pluginPath, err)
-				continue
-			}
-
-			if err := checksummer.ChecksumFile(cs, pluginPath); err != nil {
-				log.Printf("[TRACE] ChecksumFile(%q) failed: %v", pluginPath, err)
-				continue
-			}
-			checksumOk = true
-			break
-		}
-
-		if !checksumOk {
-			log.Printf("[WARN] No checksum found for %q ignoring possibly unsafe binary", path)
-			continue
-		}
-
-		if err := c.DiscoverMultiPlugin(pluginName, pluginPath); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 type PluginComponentType string
 
 const (
@@ -450,4 +275,64 @@ type PluginDetails struct {
 	PluginPath  string
 }
 
-var PluginsDetailsStorage = map[string]PluginDetails{}
+type pluginsDetailsStorage struct {
+	rwMutex sync.RWMutex
+	data    map[string]PluginDetails
+}
+
+var GlobalPluginsDetailsStore = &pluginsDetailsStorage{
+	data: make(map[string]PluginDetails),
+}
+
+func (pds *pluginsDetailsStorage) set(key string, plugin PluginDetails) {
+	pds.rwMutex.Lock()
+	defer pds.rwMutex.Unlock()
+	pds.data[key] = plugin
+}
+
+func (pds *pluginsDetailsStorage) get(key string) (PluginDetails, bool) {
+	pds.rwMutex.RLock()
+	defer pds.rwMutex.RUnlock()
+	plugin, exists := pds.data[key]
+	return plugin, exists
+}
+
+func (pds *pluginsDetailsStorage) SetBuilder(name string, plugin PluginDetails) {
+	key := fmt.Sprintf("%q-%q", PluginComponentBuilder, name)
+	pds.set(key, plugin)
+}
+
+func (pds *pluginsDetailsStorage) GetBuilder(name string) (PluginDetails, bool) {
+	key := fmt.Sprintf("%q-%q", PluginComponentBuilder, name)
+	return pds.get(key)
+}
+
+func (pds *pluginsDetailsStorage) SetPostProcessor(name string, plugin PluginDetails) {
+	key := fmt.Sprintf("%q-%q", PluginComponentPostProcessor, name)
+	pds.set(key, plugin)
+}
+
+func (pds *pluginsDetailsStorage) GetPostProcessor(name string) (PluginDetails, bool) {
+	key := fmt.Sprintf("%q-%q", PluginComponentPostProcessor, name)
+	return pds.get(key)
+}
+
+func (pds *pluginsDetailsStorage) SetProvisioner(name string, plugin PluginDetails) {
+	key := fmt.Sprintf("%q-%q", PluginComponentProvisioner, name)
+	pds.set(key, plugin)
+}
+
+func (pds *pluginsDetailsStorage) GetProvisioner(name string) (PluginDetails, bool) {
+	key := fmt.Sprintf("%q-%q", PluginComponentProvisioner, name)
+	return pds.get(key)
+}
+
+func (pds *pluginsDetailsStorage) SetDataSource(name string, plugin PluginDetails) {
+	key := fmt.Sprintf("%q-%q", PluginComponentDataSource, name)
+	pds.set(key, plugin)
+}
+
+func (pds *pluginsDetailsStorage) GetDataSource(name string) (PluginDetails, bool) {
+	key := fmt.Sprintf("%q-%q", PluginComponentDataSource, name)
+	return pds.get(key)
+}

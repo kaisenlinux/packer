@@ -1,8 +1,7 @@
 ---
-page_title: packer - Blocks
+page_title: packer block reference
 description: |-
-  The "packer" configuration section is used to configure some behaviors
-  of Packer itself.
+  Configuration reference for the `packer` block in Packer templates written in HCL.  
 ---
 
 # Packer Settings
@@ -52,7 +51,7 @@ a minimum Packer version that has behavior expected by the configuration.
 later.
 
 The `required_plugins` block specifies all of the plugins required by the
-current config, mapping each local plugin name to a source address and a
+current template, mapping each local plugin name to a source address and a
 version constraint.
 
 ```hcl
@@ -66,7 +65,33 @@ packer {
 }
 ```
 
-For more information, see [Plugins](/packer/docs/plugins).
+Using the `required_plugins` block to codify the plugins required for invoking a 
+`packer build` on your template(s) is a great way to ensure consistent builds across
+different platforms or hosts.
+
+The block codifies two pieces of information that we've found critical to ensure reproducible builds:
+1. **The source of a required plugin** indicates to users where a plugin where a plugin was downloaded from
+and where to reach out if there are issues with the plugin. 
+1. **The version of a required plugin** indicates to users the exact or minimum version needed for the build. 
+This is a great way to pin approved versions of a plugin that can be installed across your environment or team.
+
+For more information on plugins, refer to [Plugins](/packer/docs/plugins).
+
+### Define plugin source
+Specify the path to the plugin source code in the `source` field using the following format:
+
+`<HOSTNAME>/[SUBFOLDER/]<NAMESPACE>/<TYPE>`
+
+- `<Hostname>`: Specifies the hostname of the location or service that distributes the plugin. Packer only supports using `github.com` as the hostname when you install plugins using the `packer init` command. You can point to non-GitHub addresses, such as an internal proxy or plugin binary store, but Packer only pins the required version if you install the plugin using the `packer plugins install –path` command. Refer to the following documentation for additional information.
+  - [`init` command](/packer/docs/commands/init)
+  - [`plugins install`](/packer/docs/commands/plugins/install)
+- `<Subfolder>`: The subfolder path segment is an optional part of the address that enables you to download plugin sources from custom addresses. You can specify a source containing up to 13 total path segments.   
+- `<Namespace>`: An organizational namespace within the specified host. This often is the organization that publishes the plugin.
+  Type: A short name for the platform or system the plugin manages. The type is usually the plugin's preferred local name.
+
+For example, the value of the `source` field for a plugin named `myawesomecloud` is `github.com/hashicorp/myawesomecloud` if it belongs to the `hashicorp` namespace on the host `github.com`.
+
+The actual repository that `myawesomecloud` comes from must always have the name format `github.com/hashicorp/packer-plugin-myawesomecloud`, but the `required_plugins` block omits the redundant `packer-plugin-` repository prefix for brevity.
 
 ## Version Constraints
 

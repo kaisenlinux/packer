@@ -1,8 +1,218 @@
+## 1.11.2 (July 30, 2024)
+
+### FEATURES
+
+* core/hcp: export Packer options, OS, CI and VCS metadata for a build.
+     Following up on the introduction of metadata for builds in Packer 1.11.0,
+     this version introduces more metadata. In addition to the version of Packer
+     core, and the plugins used, we now capture CI-specific environment variables
+     (gitlab-ci and github-actions for now), Git-specific information, OS details
+     like architecture and kernel version, and the command-line options passed
+     to packer build.
+
+## 1.11.1 (July 1, 2024)
+
+### NOTES:
+* Future Scaffolding: This release contains additional changes that allow
+     Packer core to validate access a HCP Packer bucket before trying to
+     publish to it. If the bucket does not exist and the associated service
+     principle does not have permission to create the bucket Packer will fail
+     the build.[GH-13059](https://github.com/hashicorp/packer/pull/13059)
+
+### SECURITY:
+* core: Bump github.com/hashicorp/go-retryablehttp to address
+     CVE-2024-6104.[GH-13081](https://github.com/hashicorp/packer/pull/13081)
+
+### IMPROVEMENTS:
+* core/hcl2: The issue is that local variables in templates are evaluated in a
+     non-deterministic order, leading to inconsistent behavior. To fix this,
+     local variables will now build a list of direct dependencies, similar to
+     datasources, and evaluate these dependencies recursively. A caveat is that
+     there's a recursion cap of 10 to prevent infinite recursion; if this limit
+     is reached, an error is returned, prompting the user to fix their template.
+     [GH-13039](https://github.com/hashicorp/packer/pull/13039)
+* core: bump github.com/hashicorp/hcp-sdk-go from 0.96.0 to 0.99.0
+     [GH-13063](https://github.com/hashicorp/packer/pull/13063)
+* core: bump github.com/hashicorp/packer-plugin-sdk from 0.5.3 to 0.5.4
+     [GH-13061](https://github.com/hashicorp/packer/pull/13061)
+
+### BUG FIXES:
+* core/hcp: Change UpsertBucket to call GetBucket to address unauthorized error
+     from ustream API.
+     [GH-13059](https://github.com/hashicorp/packer/pull/13059)
+
+## 1.11.0 (2024-05-31)
+
+### NOTES:
+* A LICENSE.txt file has been added to the Packer release artifacts.
+     [GH-12931](https://github.com/hashicorp/packer/pull/12931)
+     [GH-12940](https://github.com/hashicorp/packer/pull/12940)
+
+* **Breaking Change**: Support for loading single-component plugins has been removed from Packer. [GH-12785](https://github.com/hashicorp/packer/pull/12785)
+
+* **Breaking Change**: Support for loading plugin binaries following
+     the naming convention of packer-plugin-name has been dropped. Packer will now only load
+     plugins stored under the [Packer plugin directory](https://developer.hashicorp.com/packer/docs/configure#packer-s-plugin-directory) using the expected namespaced
+     directory and CHECKSUM files. This change drops support for loading plugin
+     binaries in Packer's executable directory or a template's current working
+     directory. [GH-12828](https://github.com/hashicorp/packer/pull/12828)
+
+```shell
+/Users/dev/.packer.d/plugins
+└── github.com
+    └── hashicorp
+        └── happycloud
+            ├── packer-plugin-happycloud_v0.0.1_x5.0_darwin_arm64
+            └── packer-plugin-happycloud_v0.0.1_x5.0_darwin_arm64_SHA256SUM
+```
+
+### FEATURES:
+* core: Add `-ignore-prerelease-plugins` flag to disable the use of development
+     plugin binaries for the `build` and `validate` commands development plugin
+     binaries. [GH-12828](https://github.com/hashicorp/packer/pull/12828)
+     [GH-12882](https://github.com/hashicorp/packer/pull/12882)
+* Packer users can now track Packer version and plugin versions used for each
+     build artifact in HCP Packer.
+     [GH-12866](https://github.com/hashicorp/packer/pull/12866)
+* hcl2: add textencodebase64 and textdecodebase64 funcs
+     For feature parity with Terraform, and since having access to strings
+     encoded in something that is not UTF-8 is required in some cases, we add
+     both the textencodebase64 and textdecodebase64 functions to HCL2 templates.
+     Please note these functions return base64 encoded byte slices because of how
+     cty/hcl defines strings (NFC normalised, UTF-8 encoded).
+     [GH-12997](https://github.com/hashicorp/packer/pull/12997)
+
+### SECURITY:
+* Bump github.com/go-jose/go-jose/v3 to address GHSA-c5q2-7r4c-mv6g.
+     [GH-12880](https://github.com/hashicorp/packer/pull/12880)
+* Bump golang.org/x/net to v0.24.0 to address GO-2024-2687.
+     [GH-12924](https://github.com/hashicorp/packer/pull/12924)
+
+### IMPROVEMENTS:
+* core: Bump github.com/hashicorp/hcp-sdk-go from 0.90.0 to 0.96.0.
+     [GH-12935](https://github.com/hashicorp/packer/pull/12935)
+     [GH-12942](https://github.com/hashicorp/packer/pull/12942)
+     [GH-12960](https://github.com/hashicorp/packer/pull/12960)
+     [GH-12979](https://github.com/hashicorp/packer/pull/12979)
+* core: Bump github.com/hashicorp/packer-plugin-sdk from 0.5.2 to 0.5.3
+     [GH-12932](https://github.com/hashicorp/packer/pull/12932)
+* core: Bump go-getter/v2 from 2.2.1 to v2.2.2
+     [GH-12988](https://github.com/hashicorp/packer/pull/12988)
+* datasource/http: don't error on 2xx code
+     Previous versions of Packer only supported 200 as a success case for the http
+     datasource. This change makes any status code from 200 to 299 successful.
+     [GH-12989](https://github.com/hashicorp/packer/pull/12989)
+* core: Move to predictable plugin loading schema -  Packer will now only load
+     plugins stored under the [Packer plugin directory](https://developer.hashicorp.com/packer/docs/configure#packer-s-plugin-directory) using the expected namespaced
+     directory and CHECKSUM files.
+     [GH-12828](https://github.com/hashicorp/packer/pull/12828)
+* core: Remove support loading single-component plugins.
+     [GH-12785](https://github.com/hashicorp/packer/pull/12785)
+* core: Rename internal `packer plugin` command to `packer execute` to avoid user confusion with
+     the plugins subcommand.
+     [GH-12865](https://github.com/hashicorp/packer/pull/12865)
+* core: Packer now considers development binaries when evaluating plugin
+     version constraints. This work allows users to use binaries with versions
+     reported as "x.y.z-dev" to be used with the Packer `required_plugins`
+     block. [GH-12828](https://github.com/hashicorp/packer/pull/12828)
+* core: Packer now supports local paths to plugins for the `packer plugins remove`
+     command. This addition makes it possible to pipe commands like
+     `packer plugins installed` with it for speedy cleanup of installed plugins.
+     [GH-12886](https://github.com/hashicorp/packer/pull/12886)
+* core: Relax Packer source address URIs within the `required_plugins` block to
+     support the installation of local plugin binary using a custom or internal
+     source address (e.g. mycompany.com/plugins/happyorg/happycloud). Remote
+     installation using `packer init` or `packer plugins install`  does not
+     support non-GitHub source URIs. Users using alternative hosts must
+     install plugins manually using `packer plugins install --path`.
+     [GH-12911](https://github.com/hashicorp/packer/pull/12911), [GH-12962] (https://github.com/hashicorp/packer/pull/12962)
+* core: Remote plugins installed containing an internal version number that
+     differs from the version number within the binary name can lead to
+     confusion when tracking Packer plugin version information. To help track
+     such discrepancies in the plugin version, `packer init` and `packer plugin
+     install` have been updated to reject installation of such plugins.
+     1.0.0-dev). Users are encouraged to notify plugin maintainers of any
+     version mismatches.
+     [GH-12915](https://github.com/hashicorp/packer/pull/12915), [GH-12953](https://github.com/hashicorp/packer/pull/12953), [GH-12972](https://github.com/hashicorp/packer/pull/12972)
+* core: don't load plugins with metadata in name
+     To avoid confusion with multiple plugins that report the same effective version,
+     plugins installed need to have no metadata in their name.
+     When installed through Packer commands, the metadata is scrubbed from the name of the
+     installed plugin binary, but manually it may still be possible, so we enforce
+     that scrubbing at load-time as well.
+     [GH-12980](https://github.com/hashicorp/packer/pull/12980)
+* core: Error when multiple paths are specified for PACKER_PLUGIN_PATH
+     Since Packer 1.11 removed the capability for PACKER_PLUGIN_PATH to specify
+     multiple directories separated by `:` or `;` (depending on the platform), we
+     are explicitly erroring when this is discovered, with suggestions as to how
+     to fix the problem.
+     [GH-12967](https://github.com/hashicorp/packer/pull/12967)
+* core: Version metadata support for plugins. Plugins may now formally have metadata
+     in their versions, Packer supports it, and applies the semver recommendations on
+     them, i.e. they are ignored for comparison/sorting purposes, but allowed for
+     adding extra information about a plugin.
+     [GH-12888](https://github.com/hashicorp/packer/pull/12888)
+
+Given the specified version constraint only versions greater than or equal to 1.1.0 will be considered.
+
+```hcl
+amazon = {
+  source = "github.com/hashicorp/amazon"
+  version = ">= 1.1.0"
+}
+```
+If a development binary is installed, Packer will use it if:
+
+1. It is the highest compatible version installed.
+2. There is no final plugin version with the same version number installed alongside it.
+
+```shell
+/Users/dev/.packer.d/plugins
+└─ github.com
+   └─ hashicorp
+    	└── amazon
+          ├── packer-plugin-amazon_v1.1.0_x5.0_darwin_arm64
+          ├── packer-plugin-amazon_v1.1.0_x5.0_darwin_arm64_SHA256SUM
+          ├── packer-plugin-amazon_v1.1.1-dev_x5.0_darwin_arm64
+          └── packer-plugin-amazon_v1.1.1-dev_x5.0_darwin_arm64_SHA256SUM
+```
+
+Version 1.1.1-dev of the Amazon plugin will match the specified version constraint and be used for executing the Packer build.
+
+If, however, a 1.1.1 release version of the plugin is available, it will have precedence over the development binary.
+
+```shell
+/Users/dev/.packer.d/plugins
+└─ github.com
+   └─ hashicorp
+    	└── amazon
+          ├── packer-plugin-amazon_v1.1.1-dev_x5.0_darwin_arm64
+          ├── packer-plugin-amazon_v1.1.1-dev_x5.0_darwin_arm64_SHA256SUM
+          ├── packer-plugin-amazon_v1.1.1_x5.0_darwin_arm64
+          └── packer-plugin-amazon_v1.1.1_x5.0_darwin_arm64_SHA256SUM
+```
+
+### BUG FIXES:
+* core: fix plugin version ordering to not be lexicographic. This fixes an issue
+     with how plugins are discovered by Packer, and ensures proper version ordering.
+     This means that with this change, versions that are semantically greater,
+     but lexicographically inferior will be loaded.
+     Ex: 1.0.9 vs. 1.0.10; `1.0.9 > 1.0.10` lexicographically, but semantically
+     `1.0.10 > 1.0.9`
+* core/hcp: fix potential race condition when storing plugin details to the HCP
+     Packer metadata storage map.
+     [GH-12936](https://github.com/hashicorp/packer/pull/12936)
+* core: fix plugin listing on Windows
+     This fix addresses bugs present in the alpha releases of 1.11, where
+     the discovery of Windows binaries were not matching against the
+     filename extension (.exe).
+     [GH-12981](https://github.com/hashicorp/packer/pull/12981)
+
 ## 1.10.3 (April 22, 2024)
 
 ### NOTES
 * A LICENSE.txt file has been added to the Packer release artifacts.
-     [12981](https://github.com/hashicorp/packer/pull/12931)
+     [GH-12931](https://github.com/hashicorp/packer/pull/12931)
 
 ### FEATURES
 * Packer users can now track Packer version and plugin versions used for each
@@ -21,6 +231,7 @@
 ### BUG FIXES
 * cmd/fmt: Display information error when Packer `fmt` fails due to HCL2
      parsing error. [GH-12870](https://github.com/hashicorp/packer/pull/12870)
+
 
 ## 1.10.2 (March 6, 2024)
 

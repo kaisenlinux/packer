@@ -49,10 +49,10 @@ Usage: packer plugins install [OPTIONS...] <plugin> [<version constraint>]
       packer plugins install --path ./packer-plugin-happycloud "github.com/hashicorp/happycloud"
 
 Options:
-  -path <path>                  Install the plugin from a locally-sourced plugin binary. 
-                                This installs the plugin where a normal invocation would, but will 
+  -path <path>                  Install the plugin from a locally-sourced plugin binary.
+                                This installs the plugin where a normal invocation would, but will
                                 not try to download it from a remote location, and instead
-                                install the binary in the Packer plugins path. This option cannot 
+                                install the binary in the Packer plugins path. This option cannot
                                 be specified with a version constraint.
   -force                        Forces reinstallation of plugins, even if already installed.
 `
@@ -121,7 +121,7 @@ func (c *PluginsInstallCommand) ParseArgs(args []string) (*PluginsInstallArgs, i
 
 func (c *PluginsInstallCommand) RunContext(buildCtx context.Context, args *PluginsInstallArgs) int {
 	opts := plugingetter.ListInstallationsOptions{
-		FromFolders: c.Meta.CoreConfig.Components.PluginConfig.KnownPluginFolders,
+		PluginDirectory: c.Meta.CoreConfig.Components.PluginConfig.PluginDirectory,
 		BinaryInstallationOptions: plugingetter.BinaryInstallationOptions{
 			OS:              runtime.GOOS,
 			ARCH:            runtime.GOARCH,
@@ -130,15 +130,16 @@ func (c *PluginsInstallCommand) RunContext(buildCtx context.Context, args *Plugi
 			Checksummers: []plugingetter.Checksummer{
 				{Type: "sha256", Hash: sha256.New()},
 			},
+			ReleasesOnly: true,
 		},
 	}
 	if runtime.GOOS == "windows" {
 		opts.BinaryInstallationOptions.Ext = ".exe"
 	}
 
-	plugin, diags := addrs.ParsePluginSourceString(args.PluginIdentifier)
-	if diags.HasErrors() {
-		c.Ui.Error(diags.Error())
+	plugin, err := addrs.ParsePluginSourceString(args.PluginIdentifier)
+	if err != nil {
+		c.Ui.Errorf("Invalid source string %q: %s", args.PluginIdentifier, err)
 		return 1
 	}
 
@@ -159,6 +160,18 @@ func (c *PluginsInstallCommand) RunContext(buildCtx context.Context, args *Plugi
 			c.Ui.Error(err.Error())
 			return 1
 		}
+
+		hasPrerelease := false
+		for _, con := range constraints {
+			if con.Prerelease() {
+				hasPrerelease = true
+			}
+		}
+		if hasPrerelease {
+			c.Ui.Errorf("Unsupported prerelease for constraint %q", args.Version)
+			return 1
+		}
+
 		pluginRequirement.VersionConstraints = constraints
 	}
 
@@ -176,7 +189,7 @@ func (c *PluginsInstallCommand) RunContext(buildCtx context.Context, args *Plugi
 	}
 
 	newInstall, err := pluginRequirement.InstallLatest(plugingetter.InstallOptions{
-		InFolders:                 opts.FromFolders,
+		PluginDirectory:           opts.PluginDirectory,
 		BinaryInstallationOptions: opts.BinaryInstallationOptions,
 		Getters:                   getters,
 		Force:                     args.Force,
@@ -201,10 +214,7 @@ func (c *PluginsInstallCommand) RunContext(buildCtx context.Context, args *Plugi
 }
 
 func (c *PluginsInstallCommand) InstallFromBinary(opts plugingetter.ListInstallationsOptions, pluginIdentifier *addrs.Plugin, args *PluginsInstallArgs) int {
-	// As with the other commands, we get the last plugin directory as it
-	// has precedence over the others, and is where we'll install the
-	// plugins to.
-	pluginDir := opts.FromFolders[len(opts.FromFolders)-1]
+	pluginDir := opts.PluginDirectory
 
 	var err error
 
@@ -303,10 +313,16 @@ func (c *PluginsInstallCommand) InstallFromBinary(opts plugingetter.ListInstalla
 		}})
 	}
 
+	// Remove metadata from plugin path
+	noMetaVersion := semver.Core().String()
+	if semver.Prerelease() != "" {
+		noMetaVersion = fmt.Sprintf("%s-%s", noMetaVersion, semver.Prerelease())
+	}
+
 	outputPrefix := fmt.Sprintf(
 		"packer-plugin-%s_v%s_%s",
-		pluginIdentifier.Type,
-		desc.Version,
+		pluginIdentifier.Name(),
+		noMetaVersion,
 		desc.APIVersion,
 	)
 	binaryPath := filepath.Join(

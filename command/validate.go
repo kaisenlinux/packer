@@ -48,6 +48,11 @@ func (c *ValidateCommand) ParseArgs(args []string) (*ValidateArgs, int) {
 }
 
 func (c *ValidateCommand) RunContext(ctx context.Context, cla *ValidateArgs) int {
+	// Set the release only flag if specified as argument
+	//
+	// This deactivates the capacity for Packer to load development binaries.
+	c.CoreConfig.Components.PluginConfig.ReleasesOnly = cla.ReleaseOnly
+
 	// By default we want to inform users of undeclared variables when validating but not during build time.
 	cla.MetaArgs.WarnOnUndeclaredVar = true
 	if cla.NoWarnUndeclaredVar {
@@ -118,6 +123,7 @@ Options:
   -var-file=path                JSON or HCL2 file containing user variables, can be used multiple times.
   -no-warn-undeclared-var       Disable warnings for user variable files containing undeclared variables.
   -evaluate-datasources         Evaluate data sources during validation (HCL2 only, may incur costs); Defaults to false. 
+  -ignore-prerelease-plugins    Disable the loading of prerelease plugin binaries (x.y.z-dev).
 `
 
 	return strings.TrimSpace(helpText)
