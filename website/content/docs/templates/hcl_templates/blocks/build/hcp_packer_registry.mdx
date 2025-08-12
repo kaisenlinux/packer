@@ -1,13 +1,16 @@
 ---
 description: >
-  The hcp_packer_registry allows operators the ability to customize the metadata sent to HCP Packer Registry.
-  It configures the base details of an image that is created or updated within HCP Packer.
-page_title: hcp_packer_registry - build - Blocks
+  The `hcp_packer_registry` block specifies details for new or updated images in the HCP Packer registry. Learn how to configure the `hcp_packer_registry` block.
+page_title: hcp_packer_registry block reference
 ---
 
-# The `hcp_packer_registry` block
+# `hcp_packer_registry` block
 
-The `hcp_packer_registry` block lets you customize the metadata Packer sends to HCP Packer Registry. It configures the details of an image that is created or updated within the HCP Packer registry.
+This topic provides reference information about the `hcp_packer_registry` block.
+
+## Description
+
+The `hcp_packer_registry` block configures details about an image Packer creates or updates in the HCP Packer registry. Use the `hcp_packer_registry` block to customize the metadata Packer sends to HCP Packer Registry. 
 
 To get started with HCP Packer, refer to the [HCP Packer documentation](/hcp/docs/packer) or try the [Get Started with HCP Packer tutorials](/packer/tutorials/hcp-get-started).
 
@@ -15,8 +18,8 @@ To get started with HCP Packer, refer to the [HCP Packer documentation](/hcp/doc
 
 This block is available from version 1.7.7 of Packer.
 
-The presence of a `hcp_packer_registry` block in a build block will enable HCP
-Packer mode. Packer will push all builds within that build block to the remote
+Add a `hcp_packer_registry` block to your template file to enable HCP
+Packer mode. When in HCP Packer mode, Packer pushes metadata for all builds in the template to the remote
 registry if the appropriate HCP credentials are set (`HCP_CLIENT_ID` and
 `HCP_CLIENT_SECRET`). If no HCP credentials are set, Packer will fail the build
 and exit immediately to avoid any potential artifact drift between the defined
@@ -31,25 +34,24 @@ source "happycloud" "macos" {
 }
 
 build {
-   hcp_packer_registry {
-    bucket_name = "ios-dev"
+  sources = ["source.happycloud.macos"]
+}
+hcp_packer_registry {
+  bucket_name = "ios-dev"
 
-    description = <<EOT
+  description = <<EOT
 Some nice description about the image which artifact is being published to HCP Packer Registry. =D
-    EOT
+  EOT
 
-    bucket_labels = {
-      "team" = "ios-development",
-      "os"   = "macos"
-    }
-
-    build_labels = {
-      "xcode"   = "11.3.0"
-      "version" = "Big Sur"
-    }
+  bucket_labels = {
+    "team" = "ios-development",
+    "os"   = "macos"
   }
 
-  sources = ["source.happycloud.macos"]
+  build_labels = {
+    "xcode"   = "11.3.0"
+    "version" = "Big Sur"
+  }
 }
 ```
 

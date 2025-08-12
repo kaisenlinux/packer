@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
 	"github.com/hashicorp/packer/builder/null"
 	"github.com/hashicorp/packer/packer"
 )
@@ -48,13 +47,13 @@ func TestParse_datasource(t *testing.T) {
 						Type: "amazon-ami",
 						Name: "test",
 					}: {
-						Type: "amazon-ami",
-						Name: "test",
+						Type:   "amazon-ami",
+						DSName: "test",
 					},
 				},
 			},
 			false, false,
-			[]packersdk.Build{
+			[]*packer.CoreBuild{
 				&packer.CoreBuild{
 					Type:           "null.test",
 					BuilderType:    "null",
@@ -62,9 +61,11 @@ func TestParse_datasource(t *testing.T) {
 					Provisioners:   []packer.CoreBuildProvisioner{},
 					PostProcessors: [][]packer.CoreBuildPostProcessor{},
 					Prepared:       true,
+					SensitiveVars:  []string{},
 				},
 			},
 			false,
+			nil,
 		},
 		{"recursive datasources",
 			defaultParser,
@@ -98,41 +99,51 @@ func TestParse_datasource(t *testing.T) {
 						Type: "null",
 						Name: "foo",
 					}: {
-						Type: "null",
-						Name: "foo",
+						Type:   "null",
+						DSName: "foo",
 					},
 					{
 						Type: "null",
 						Name: "bar",
 					}: {
-						Type: "null",
-						Name: "bar",
+						Type:   "null",
+						DSName: "bar",
 					},
 					{
 						Type: "null",
 						Name: "baz",
 					}: {
-						Type: "null",
-						Name: "baz",
+						Type:   "null",
+						DSName: "baz",
+						Dependencies: []refString{
+							{"data", "null", "foo"},
+							{"data", "null", "bar"},
+						},
 					},
 					{
 						Type: "null",
 						Name: "bang",
 					}: {
-						Type: "null",
-						Name: "bang",
+						Type:   "null",
+						DSName: "bang",
+						Dependencies: []refString{
+							{"data", "null", "baz"},
+						},
 					},
 					{
 						Type: "null",
 						Name: "yummy",
 					}: {
-						Type: "null",
-						Name: "yummy",
+						Type:   "null",
+						DSName: "yummy",
+						Dependencies: []refString{
+							{"data", "null", "bang"},
+						},
 					},
 				},
 			},
 			false, false,
-			[]packersdk.Build{
+			[]*packer.CoreBuild{
 				&packer.CoreBuild{
 					Type:           "null.test",
 					BuilderType:    "null",
@@ -140,9 +151,11 @@ func TestParse_datasource(t *testing.T) {
 					Provisioners:   []packer.CoreBuildProvisioner{},
 					PostProcessors: [][]packer.CoreBuildPostProcessor{},
 					Prepared:       true,
+					SensitiveVars:  []string{},
 				},
 			},
 			false,
+			nil,
 		},
 		{"untyped datasource",
 			defaultParser,
@@ -154,6 +167,7 @@ func TestParse_datasource(t *testing.T) {
 			true, true,
 			nil,
 			false,
+			nil,
 		},
 		{"unnamed source",
 			defaultParser,
@@ -165,6 +179,7 @@ func TestParse_datasource(t *testing.T) {
 			true, true,
 			nil,
 			false,
+			nil,
 		},
 		{"nonexistent source",
 			defaultParser,
@@ -177,14 +192,15 @@ func TestParse_datasource(t *testing.T) {
 						Type: "nonexistent",
 						Name: "test",
 					}: {
-						Type: "nonexistent",
-						Name: "test",
+						Type:   "nonexistent",
+						DSName: "test",
 					},
 				},
 			},
 			true, true,
 			nil,
 			false,
+			nil,
 		},
 		{"duplicate source",
 			defaultParser,
@@ -197,14 +213,15 @@ func TestParse_datasource(t *testing.T) {
 						Type: "amazon-ami",
 						Name: "test",
 					}: {
-						Type: "amazon-ami",
-						Name: "test",
+						Type:   "amazon-ami",
+						DSName: "test",
 					},
 				},
 			},
 			true, true,
 			nil,
 			false,
+			nil,
 		},
 		{"cyclic dependency between data sources",
 			defaultParser,
@@ -217,21 +234,28 @@ func TestParse_datasource(t *testing.T) {
 						Type: "null",
 						Name: "gummy",
 					}: {
-						Type: "null",
-						Name: "gummy",
+						Type:   "null",
+						DSName: "gummy",
+						Dependencies: []refString{
+							{"data", "null", "bear"},
+						},
 					},
 					{
 						Type: "null",
 						Name: "bear",
 					}: {
-						Type: "null",
-						Name: "bear",
+						Type:   "null",
+						DSName: "bear",
+						Dependencies: []refString{
+							{"data", "null", "gummy"},
+						},
 					},
 				},
 			},
 			true, true,
 			nil,
 			false,
+			nil,
 		},
 	}
 

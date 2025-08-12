@@ -296,6 +296,13 @@ func (c *Core) generateCoreBuildProvisioner(rawP *template.Provisioner, rawName 
 			Provisioner: provisioner,
 		}
 	}
+
+	if rawP.Type == "hcp-sbom" {
+		provisioner = &SBOMInternalProvisioner{
+			Provisioner: provisioner,
+		}
+	}
+
 	cbp = CoreBuildProvisioner{
 		PType:       rawP.Type,
 		Provisioner: provisioner,
@@ -307,9 +314,9 @@ func (c *Core) generateCoreBuildProvisioner(rawP *template.Provisioner, rawName 
 
 // This is used for json templates to launch the build plugins.
 // They will be prepared via b.Prepare() later.
-func (c *Core) GetBuilds(opts GetBuildsOptions) ([]packersdk.Build, hcl.Diagnostics) {
+func (c *Core) GetBuilds(opts GetBuildsOptions) ([]*CoreBuild, hcl.Diagnostics) {
 	buildNames := c.BuildNames(opts.Only, opts.Except)
-	builds := []packersdk.Build{}
+	builds := []*CoreBuild{}
 	diags := hcl.Diagnostics{}
 	for _, n := range buildNames {
 		b, err := c.Build(n)
@@ -355,7 +362,7 @@ func (c *Core) GetBuilds(opts GetBuildsOptions) ([]packersdk.Build, hcl.Diagnost
 }
 
 // Build returns the Build object for the given name.
-func (c *Core) Build(n string) (packersdk.Build, error) {
+func (c *Core) Build(n string) (*CoreBuild, error) {
 	// Setup the builder
 	configBuilder, ok := c.builds[n]
 	if !ok {
@@ -487,6 +494,11 @@ func (c *Core) Build(n string) (packersdk.Build, error) {
 		postProcessors = append(postProcessors, current)
 	}
 
+	var sensitiveVars []string
+	for _, sensitive := range c.Template.SensitiveVariables {
+		sensitiveVars = append(sensitiveVars, sensitive.Key)
+	}
+
 	// TODO hooks one day
 
 	// Return a structure that contains the plugins, their types, variables, and
@@ -501,6 +513,7 @@ func (c *Core) Build(n string) (packersdk.Build, error) {
 		CleanupProvisioner: cleanupProvisioner,
 		TemplatePath:       c.Template.Path,
 		Variables:          c.variables,
+		SensitiveVars:      sensitiveVars,
 	}
 
 	//configBuilder.Name is left uninterpolated so we must check against
@@ -873,7 +886,7 @@ func (c *Core) renderVarsRecursively() (*interpolate.Context, error) {
 		Key   string
 		Value string
 	}
-	sortedMap := make([]keyValue, len(repeatMap))
+	sortedMap := make([]keyValue, 0, len(repeatMap))
 	for _, k := range allKeys {
 		sortedMap = append(sortedMap, keyValue{k, repeatMap[k]})
 	}

@@ -7,26 +7,30 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/dynblock"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
+	"github.com/hashicorp/packer/internal/dag"
 	"github.com/hashicorp/packer/packer"
 	"github.com/zclconf/go-cty/cty"
 )
 
 const (
-	packerLabel       = "packer"
-	sourceLabel       = "source"
-	variablesLabel    = "variables"
-	variableLabel     = "variable"
-	localsLabel       = "locals"
-	localLabel        = "local"
-	dataSourceLabel   = "data"
-	buildLabel        = "build"
-	communicatorLabel = "communicator"
+	packerLabel            = "packer"
+	sourceLabel            = "source"
+	variablesLabel         = "variables"
+	variableLabel          = "variable"
+	localsLabel            = "locals"
+	localLabel             = "local"
+	dataSourceLabel        = "data"
+	buildLabel             = "build"
+	hcpPackerRegistryLabel = "hcp_packer_registry"
+	communicatorLabel      = "communicator"
 )
 
 var configSchema = &hcl.BodySchema{
@@ -39,6 +43,7 @@ var configSchema = &hcl.BodySchema{
 		{Type: localLabel, LabelNames: []string{"name"}},
 		{Type: dataSourceLabel, LabelNames: []string{"type", "name"}},
 		{Type: buildLabel},
+		{Type: hcpPackerRegistryLabel},
 		{Type: communicatorLabel, LabelNames: []string{"type", "name"}},
 	},
 }
@@ -163,6 +168,14 @@ func (p *Parser) Parse(filename string, varFiles []string, argVars map[string]st
 		return cfg, diags
 	}
 
+	// Looks for invalid arguments or unsupported block types
+	{
+		for _, file := range files {
+			_, moreDiags := file.Body.Content(configSchema)
+			diags = append(diags, moreDiags...)
+		}
+	}
+
 	// Decode required_plugins blocks.
 	//
 	// Note: using `latest` ( or actually an empty string ) in a config file
@@ -198,39 +211,44 @@ func (p *Parser) Parse(filename string, varFiles []string, argVars map[string]st
 	{
 		hclVarFiles, jsonVarFiles, moreDiags := GetHCL2Files(filename, hcl2AutoVarFileExt, hcl2AutoVarJsonFileExt)
 		diags = append(diags, moreDiags...)
-		for _, file := range varFiles {
+
+		// Combine all variable files into a single list, preserving the intended precedence and order.
+		// The order is: auto-loaded HCL files, auto-loaded JSON files, followed by user-specified varFiles.
+		// This ensures that user-specified files can override values from auto-loaded files,
+		// and that their relative order is preserved exactly as specified by the user.
+		variableFileNames := append(append(hclVarFiles, jsonVarFiles...), varFiles...)
+
+		var variableFiles []*hcl.File
+
+		for _, file := range variableFileNames {
+			var (
+				f         *hcl.File
+				moreDiags hcl.Diagnostics
+			)
 			switch filepath.Ext(file) {
 			case ".hcl":
-				hclVarFiles = append(hclVarFiles, file)
+				f, moreDiags = p.ParseHCLFile(file)
 			case ".json":
-				jsonVarFiles = append(jsonVarFiles, file)
+				f, moreDiags = p.ParseJSONFile(file)
 			default:
-				diags = append(moreDiags, &hcl.Diagnostic{
-					Severity: hcl.DiagError,
-					Summary:  "Could not guess format of " + file,
-					Detail:   "A var file must be suffixed with `.hcl` or `.json`.",
-				})
+				moreDiags = hcl.Diagnostics{
+					&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "Could not guess format of " + file,
+						Detail:   "A var file must be suffixed with `.hcl` or `.json`.",
+					},
+				}
 			}
-		}
-		var varFiles []*hcl.File
-		for _, filename := range hclVarFiles {
-			f, moreDiags := p.ParseHCLFile(filename)
+
 			diags = append(diags, moreDiags...)
 			if moreDiags.HasErrors() {
 				continue
 			}
-			varFiles = append(varFiles, f)
-		}
-		for _, filename := range jsonVarFiles {
-			f, moreDiags := p.ParseJSONFile(filename)
-			diags = append(diags, moreDiags...)
-			if moreDiags.HasErrors() {
-				continue
-			}
-			varFiles = append(varFiles, f)
+			variableFiles = append(variableFiles, f)
+
 		}
 
-		diags = append(diags, cfg.collectInputVariableValues(os.Environ(), varFiles, argVars)...)
+		diags = append(diags, cfg.collectInputVariableValues(os.Environ(), variableFiles, argVars)...)
 	}
 
 	return cfg, diags
@@ -295,10 +313,247 @@ func filterVarsFromLogs(inputOrLocal Variables) {
 	}
 }
 
+func (cfg *PackerConfig) detectBuildPrereqDependencies() hcl.Diagnostics {
+	var diags hcl.Diagnostics
+
+	for _, ds := range cfg.Datasources {
+		dependencies := GetVarsByType(ds.block, "data")
+		dependencies = append(dependencies, GetVarsByType(ds.block, "local")...)
+
+		for _, dep := range dependencies {
+			// If something is locally aliased as `local` or `data`, we'll falsely
+			// report it as a local variable, which is not necessarily what we
+			// want to process here, so we continue.
+			//
+			// Note: this is kinda brittle, we should understand scopes to accurately
+			// mark something from an expression as a reference to a local variable.
+			// No real good solution for this now, besides maybe forbidding something
+			// to be locally aliased as `local`.
+			if len(dep) < 2 {
+				continue
+			}
+			rs, err := NewRefStringFromDep(dep)
+			if err != nil {
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "failed to process datasource dependency",
+					Detail: fmt.Sprintf("An error occurred while processing a dependency for data source %s: %s",
+						ds.Name(), err),
+				})
+				continue
+			}
+
+			err = ds.RegisterDependency(rs)
+			if err != nil {
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "failed to register datasource dependency",
+					Detail: fmt.Sprintf("An error occurred while registering %q as a dependency for data source %s: %s",
+						rs, ds.Name(), err),
+				})
+			}
+		}
+
+		cfg.Datasources[ds.Ref()] = ds
+	}
+
+	for _, loc := range cfg.LocalBlocks {
+		dependencies := FilterTraversalsByType(loc.Expr.Variables(), "data")
+		dependencies = append(dependencies, FilterTraversalsByType(loc.Expr.Variables(), "local")...)
+
+		for _, dep := range dependencies {
+			// If something is locally aliased as `local` or `data`, we'll falsely
+			// report it as a local variable, which is not necessarily what we
+			// want to process here, so we continue.
+			//
+			// Note: this is kinda brittle, we should understand scopes to accurately
+			// mark something from an expression as a reference to a local variable.
+			// No real good solution for this now, besides maybe forbidding something
+			// to be locally aliased as `local`.
+			if len(dep) < 2 {
+				continue
+			}
+			rs, err := NewRefStringFromDep(dep)
+			if err != nil {
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "failed to process local dependency",
+					Detail: fmt.Sprintf("An error occurred while processing a dependency for local variable %s: %s",
+						loc.LocalName, err),
+				})
+				continue
+			}
+
+			err = loc.RegisterDependency(rs)
+			if err != nil {
+				diags = diags.Append(&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "failed to register local dependency",
+					Detail: fmt.Sprintf("An error occurred while registering %q as a dependency for local variable %s: %s",
+						rs, loc.LocalName, err),
+				})
+			}
+		}
+	}
+
+	return diags
+}
+
+func (cfg *PackerConfig) buildPrereqsDAG() (*dag.AcyclicGraph, error) {
+	retGraph := dag.AcyclicGraph{}
+
+	verticesMap := map[string]dag.Vertex{}
+
+	var err error
+
+	// Do a first pass to create all the vertices
+	for ref := range cfg.Datasources {
+		// We keep a reference to the datasource separately from where it
+		// is used to avoid getting bit by the loop semantics.
+		//
+		// This `ds` local variable is the same object for every loop
+		// so if we directly use the address of this object, we'll end
+		// up referencing the last node of the loop for each vertex,
+		// leading to implicit cycles.
+		//
+		// However by capturing it locally in this loop, we have a
+		// reference to the actual datasource block, so it ends-up being
+		// the right instance for each vertex.
+		ds := cfg.Datasources[ref]
+		v := retGraph.Add(&ds)
+		verticesMap[fmt.Sprintf("data.%s", ds.Name())] = v
+	}
+	// Note: locals being references to the objects already, we can safely
+	// use the reference returned by the local loop.
+	for _, local := range cfg.LocalBlocks {
+		v := retGraph.Add(local)
+		verticesMap[fmt.Sprintf("local.%s", local.LocalName)] = v
+	}
+
+	// Connect the vertices together
+	//
+	// Vertices that don't have dependencies will be connected to the
+	// root vertex of the graph
+	for _, ds := range cfg.Datasources {
+		dsName := fmt.Sprintf("data.%s", ds.Name())
+
+		source := verticesMap[dsName]
+		if source == nil {
+			err = multierror.Append(err, fmt.Errorf("unable to find source vertex %q for dependency analysis, this is likely a Packer bug", dsName))
+			continue
+		}
+
+		for _, dep := range ds.Dependencies {
+			target := verticesMap[dep.String()]
+			if target == nil {
+				err = multierror.Append(err, fmt.Errorf("could not get dependency %q for %q, %q missing in template", dep.String(), dsName, dep.String()))
+				continue
+			}
+
+			retGraph.Connect(dag.BasicEdge(source, target))
+		}
+	}
+	for _, loc := range cfg.LocalBlocks {
+		locName := fmt.Sprintf("local.%s", loc.LocalName)
+
+		source := verticesMap[locName]
+		if source == nil {
+			err = multierror.Append(err, fmt.Errorf("unable to find source vertex %q for dependency analysis, this is likely a Packer bug", locName))
+			continue
+		}
+
+		for _, dep := range loc.dependencies {
+			target := verticesMap[dep.String()]
+
+			if target == nil {
+				err = multierror.Append(err, fmt.Errorf("could not get dependency %q for %q, %q missing in template", dep.String(), locName, dep.String()))
+				continue
+			}
+
+			retGraph.Connect(dag.BasicEdge(source, target))
+		}
+	}
+
+	if validateErr := retGraph.Validate(); validateErr != nil {
+		err = multierror.Append(err, validateErr)
+	}
+
+	return &retGraph, err
+}
+
+func (cfg *PackerConfig) evaluateBuildPrereqs(skipDatasources bool) hcl.Diagnostics {
+	diags := cfg.detectBuildPrereqDependencies()
+	if diags.HasErrors() {
+		return diags
+	}
+
+	graph, err := cfg.buildPrereqsDAG()
+	if err != nil {
+		return diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "failed to prepare execution graph",
+			Detail:   fmt.Sprintf("An error occurred while building the graph for datasources/locals: %s", err),
+		})
+	}
+
+	walkFunc := func(v dag.Vertex) hcl.Diagnostics {
+		var diags hcl.Diagnostics
+
+		switch bl := v.(type) {
+		case *DatasourceBlock:
+			diags = cfg.evaluateDatasource(*bl, skipDatasources)
+		case *LocalBlock:
+			var val *Variable
+			if cfg.LocalVariables == nil {
+				cfg.LocalVariables = make(Variables)
+			}
+			val, diags = cfg.evaluateLocalVariable(bl)
+			// Note: clumsy a bit, but we won't add the variable as `nil` here
+			// unless no errors have been reported during evaluation.
+			//
+			// This prevents Packer from panicking down the line, as initialisation
+			// doesn't stop if there are diags, so if `val` is nil, it crashes.
+			if !diags.HasErrors() {
+				cfg.LocalVariables[bl.LocalName] = val
+			}
+		default:
+			diags = diags.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  "unsupported DAG node type",
+				Detail: fmt.Sprintf("A node of type %q was added to the DAG, but cannot be "+
+					"evaluated as it is unsupported. "+
+					"This is a Packer bug, please report it so we can investigate.",
+					reflect.TypeOf(v).String()),
+			})
+		}
+
+		if diags.HasErrors() {
+			return diags
+		}
+
+		return nil
+	}
+
+	for _, vtx := range graph.ReverseTopologicalOrder() {
+		vtxDiags := walkFunc(vtx)
+		if vtxDiags.HasErrors() {
+			diags = diags.Extend(vtxDiags)
+			return diags
+		}
+	}
+
+	return nil
+}
+
 func (cfg *PackerConfig) Initialize(opts packer.InitializeOptions) hcl.Diagnostics {
 	diags := cfg.InputVariables.ValidateValues()
-	diags = append(diags, cfg.evaluateDatasources(opts.SkipDatasourcesExecution)...)
-	diags = append(diags, cfg.evaluateLocalVariables(cfg.LocalBlocks)...)
+
+	if opts.UseSequential {
+		diags = diags.Extend(cfg.evaluateDatasources(opts.SkipDatasourcesExecution))
+		diags = diags.Extend(cfg.evaluateLocalVariables(cfg.LocalBlocks))
+	} else {
+		diags = diags.Extend(cfg.evaluateBuildPrereqs(opts.SkipDatasourcesExecution))
+	}
 
 	filterVarsFromLogs(cfg.InputVariables)
 	filterVarsFromLogs(cfg.LocalVariables)
@@ -325,6 +580,22 @@ func (p *Parser) parseConfig(f *hcl.File, cfg *PackerConfig) hcl.Diagnostics {
 
 	for _, block := range content.Blocks {
 		switch block.Type {
+		case buildHCPPackerRegistryLabel:
+			if cfg.HCPPackerRegistry != nil {
+				diags = append(diags, &hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "Only one " + buildHCPPackerRegistryLabel + " is allowed",
+					Subject:  block.DefRange.Ptr(),
+				})
+				continue
+			}
+			hcpPackerRegistry, moreDiags := p.decodeHCPRegistry(block, cfg)
+			diags = append(diags, moreDiags...)
+			if moreDiags.HasErrors() {
+				continue
+			}
+			cfg.HCPPackerRegistry = hcpPackerRegistry
+
 		case sourceLabel:
 			source, moreDiags := p.decodeSource(block)
 			diags = append(diags, moreDiags...)
@@ -369,8 +640,7 @@ func (p *Parser) decodeDatasources(file *hcl.File, cfg *PackerConfig) hcl.Diagno
 	var diags hcl.Diagnostics
 
 	body := file.Body
-	content, moreDiags := body.Content(configSchema)
-	diags = append(diags, moreDiags...)
+	content, _ := body.Content(configSchema)
 
 	for _, block := range content.Blocks {
 		switch block.Type {

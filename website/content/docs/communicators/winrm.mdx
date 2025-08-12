@@ -1,19 +1,22 @@
 ---
 description: |
-  Communicators are the mechanism Packer uses to upload files, execute scripts,
-  etc. with the machine being created.
-page_title: Communicators - Templates
+  The `winrm` communicator establishes a WinRM connection, letting Packer upload files or execute scripts on the machine it creates. 
+page_title: Establish a WinRM Connection
 ---
 
-# WinRM Communicator
+# Establish a WinRM Connection
+
+This topic describes how to use the `winrm` communicator to establish a WinRM connection to the machine it creates so that Packer can perform actions, such as upload files and execute scripts.
+
+## Introduction 
 
 Communicators are the mechanism Packer uses to upload files, execute scripts,
-etc. with the machine being created. The WinRM communicator uses the
+etc. with the machine being created. The `winrm` communicator uses the
 Windows Remote Management protocol to do this.
 
-## Getting Ready to Use the WinRM Communicator
+## Getting Ready to Use the `winrm` Communicator
 
-The WinRM communicator is not the default communicator, so you will always have
+The `winrm` communicator is not the default communicator, so you will always have
 to set the `"communicator": "winrm",` template option explicitly. In addition,
 you will almost always have to provide a pre-run script that enables and
 configures WinRM on the guest machine. This will generally be in the form of a
@@ -32,7 +35,7 @@ If you are unfamiliar with how to use an autounattend file, take a look at our
 how to automatically initalize your operating system is critical for being able
 to successfully use Packer to build from an iso.
 
-## WinRM Communicator Options
+## `winrm` Communicator Options
 
 @include "packer-plugin-sdk/communicator/WinRM-not-required.mdx"
 
@@ -165,7 +168,7 @@ cmd.exe /c winrm set "winrm/config/listener?Address=*+Transport=HTTPS" "@{Port=`
 
 # Make sure appropriate firewall port openings exist
 cmd.exe /c netsh advfirewall firewall set rule group="remote administration" new enable=yes
-cmd.exe /c netsh firewall add portopening TCP 5986 "Port 5986"
+cmd.exe /c netsh advfirewall firewall add rule name="Port 5986" dir=in action=allow protocol=TCP localport=5986 profile=any
 
 # Restart WinRM, and set it so that it auto-launches on startup.
 cmd.exe /c net stop winrm

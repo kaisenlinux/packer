@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
 	. "github.com/hashicorp/packer/hcl2template/internal"
 	"github.com/hashicorp/packer/packer"
 	"github.com/zclconf/go-cty/cty"
@@ -55,8 +54,9 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			true, true,
-			[]packersdk.Build{},
+			[]*packer.CoreBuild{},
 			true,
+			nil,
 		},
 		{"untyped provisioner",
 			defaultParser,
@@ -69,6 +69,7 @@ func TestParse_build(t *testing.T) {
 			true, true,
 			nil,
 			false,
+			nil,
 		},
 		{"nonexistent provisioner",
 			defaultParser,
@@ -104,10 +105,12 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			true, true,
-			[]packersdk.Build{&packer.CoreBuild{
-				Provisioners: []packer.CoreBuildProvisioner{},
+			[]*packer.CoreBuild{&packer.CoreBuild{
+				Provisioners:  []packer.CoreBuildProvisioner{},
+				SensitiveVars: []string{},
 			}},
 			false,
+			nil,
 		},
 		{"two error-cleanup-provisioner",
 			defaultParser,
@@ -120,7 +123,7 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			true, true,
-			[]packersdk.Build{&packer.CoreBuild{
+			[]*packer.CoreBuild{&packer.CoreBuild{
 				Builder: emptyMockBuilder,
 				CleanupProvisioner: packer.CoreBuildProvisioner{
 					PType: "shell-local",
@@ -135,6 +138,7 @@ func TestParse_build(t *testing.T) {
 				},
 			}},
 			false,
+			nil,
 		},
 		{"untyped post-processor",
 			defaultParser,
@@ -145,8 +149,11 @@ func TestParse_build(t *testing.T) {
 				Builds:                  nil,
 			},
 			true, true,
-			[]packersdk.Build{&packer.CoreBuild{}},
+			[]*packer.CoreBuild{&packer.CoreBuild{
+				SensitiveVars: []string{},
+			}},
 			false,
+			nil,
 		},
 		{"nonexistent post-processor",
 			defaultParser,
@@ -184,10 +191,12 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			true, true,
-			[]packersdk.Build{&packer.CoreBuild{
+			[]*packer.CoreBuild{&packer.CoreBuild{
 				PostProcessors: [][]packer.CoreBuildPostProcessor{},
+				SensitiveVars:  []string{},
 			}},
 			true,
+			nil,
 		},
 		{"invalid source",
 			defaultParser,
@@ -198,8 +207,9 @@ func TestParse_build(t *testing.T) {
 				Builds:                  nil,
 			},
 			true, true,
-			[]packersdk.Build{},
+			[]*packer.CoreBuild{},
 			false,
+			nil,
 		},
 		{"named build",
 			defaultParser,
@@ -225,8 +235,9 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			true, true,
-			[]packersdk.Build{},
+			[]*packer.CoreBuild{},
 			true,
+			nil,
 		},
 		{"post-processor with only and except",
 			defaultParser,
@@ -280,13 +291,14 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			false, false,
-			[]packersdk.Build{
+			[]*packer.CoreBuild{
 				&packer.CoreBuild{
-					Type:         "virtualbox-iso.ubuntu-1204",
-					BuilderType:  "virtualbox-iso",
-					Prepared:     true,
-					Builder:      emptyMockBuilder,
-					Provisioners: []packer.CoreBuildProvisioner{},
+					Type:          "virtualbox-iso.ubuntu-1204",
+					BuilderType:   "virtualbox-iso",
+					Prepared:      true,
+					Builder:       emptyMockBuilder,
+					Provisioners:  []packer.CoreBuildProvisioner{},
+					SensitiveVars: []string{},
 					PostProcessors: [][]packer.CoreBuildPostProcessor{
 						{
 							{
@@ -317,11 +329,12 @@ func TestParse_build(t *testing.T) {
 					},
 				},
 				&packer.CoreBuild{
-					Type:         "amazon-ebs.aws-ubuntu-16.04",
-					BuilderType:  "amazon-ebs",
-					Prepared:     true,
-					Builder:      emptyMockBuilder,
-					Provisioners: []packer.CoreBuildProvisioner{},
+					Type:          "amazon-ebs.aws-ubuntu-16.04",
+					BuilderType:   "amazon-ebs",
+					Prepared:      true,
+					Builder:       emptyMockBuilder,
+					Provisioners:  []packer.CoreBuildProvisioner{},
+					SensitiveVars: []string{},
 					PostProcessors: [][]packer.CoreBuildPostProcessor{
 						{
 							{
@@ -353,6 +366,7 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			false,
+			nil,
 		},
 		{"provisioner with only and except",
 			defaultParser,
@@ -397,12 +411,13 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			false, false,
-			[]packersdk.Build{
+			[]*packer.CoreBuild{
 				&packer.CoreBuild{
-					Type:        "virtualbox-iso.ubuntu-1204",
-					BuilderType: "virtualbox-iso",
-					Prepared:    true,
-					Builder:     emptyMockBuilder,
+					Type:          "virtualbox-iso.ubuntu-1204",
+					BuilderType:   "virtualbox-iso",
+					Prepared:      true,
+					Builder:       emptyMockBuilder,
+					SensitiveVars: []string{},
 					Provisioners: []packer.CoreBuildProvisioner{
 						{
 							PType: "shell",
@@ -430,10 +445,11 @@ func TestParse_build(t *testing.T) {
 					PostProcessors: [][]packer.CoreBuildPostProcessor{},
 				},
 				&packer.CoreBuild{
-					Type:        "amazon-ebs.aws-ubuntu-16.04",
-					BuilderType: "amazon-ebs",
-					Prepared:    true,
-					Builder:     emptyMockBuilder,
+					Type:          "amazon-ebs.aws-ubuntu-16.04",
+					BuilderType:   "amazon-ebs",
+					Prepared:      true,
+					Builder:       emptyMockBuilder,
+					SensitiveVars: []string{},
 					Provisioners: []packer.CoreBuildProvisioner{
 						{
 							PType: "file",
@@ -462,6 +478,7 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			false,
+			nil,
 		},
 		{"provisioner with packer_version interpolation",
 			defaultParser,
@@ -488,12 +505,13 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			false, false,
-			[]packersdk.Build{
+			[]*packer.CoreBuild{
 				&packer.CoreBuild{
-					Type:        "virtualbox-iso.ubuntu-1204",
-					BuilderType: "virtualbox-iso",
-					Prepared:    true,
-					Builder:     emptyMockBuilder,
+					Type:          "virtualbox-iso.ubuntu-1204",
+					BuilderType:   "virtualbox-iso",
+					Prepared:      true,
+					Builder:       emptyMockBuilder,
+					SensitiveVars: []string{},
 					Provisioners: []packer.CoreBuildProvisioner{
 						{
 							PType: "shell",
@@ -514,6 +532,7 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			false,
+			nil,
 		},
 		{"variable interpolation for build name and description",
 			defaultParser,
@@ -551,7 +570,7 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			false, false,
-			[]packersdk.Build{
+			[]*packer.CoreBuild{
 				&packer.CoreBuild{
 					BuildName:      "build-name",
 					Type:           "virtualbox-iso.ubuntu-1204",
@@ -560,9 +579,11 @@ func TestParse_build(t *testing.T) {
 					Builder:        emptyMockBuilder,
 					Provisioners:   []packer.CoreBuildProvisioner{},
 					PostProcessors: [][]packer.CoreBuildPostProcessor{},
+					SensitiveVars:  []string{},
 				},
 			},
 			false,
+			nil,
 		},
 		{"invalid variable for build name",
 			defaultParser,
@@ -574,8 +595,9 @@ func TestParse_build(t *testing.T) {
 				Builds:                  nil,
 			},
 			true, true,
-			[]packersdk.Build{},
+			[]*packer.CoreBuild{},
 			false,
+			nil,
 		},
 		{"use build.name in post-processor block",
 			defaultParser,
@@ -606,14 +628,15 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			false, false,
-			[]packersdk.Build{
+			[]*packer.CoreBuild{
 				&packer.CoreBuild{
-					BuildName:    "test-build",
-					Type:         "virtualbox-iso.ubuntu-1204",
-					BuilderType:  "virtualbox-iso",
-					Prepared:     true,
-					Builder:      emptyMockBuilder,
-					Provisioners: []packer.CoreBuildProvisioner{},
+					BuildName:     "test-build",
+					Type:          "virtualbox-iso.ubuntu-1204",
+					BuilderType:   "virtualbox-iso",
+					Prepared:      true,
+					Builder:       emptyMockBuilder,
+					Provisioners:  []packer.CoreBuildProvisioner{},
+					SensitiveVars: []string{},
 					PostProcessors: [][]packer.CoreBuildPostProcessor{
 						{
 							{
@@ -636,6 +659,7 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			false,
+			nil,
 		},
 		{"use build.name in provisioner block",
 			defaultParser,
@@ -664,13 +688,14 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			false, false,
-			[]packersdk.Build{
+			[]*packer.CoreBuild{
 				&packer.CoreBuild{
-					BuildName:   "build-name-test",
-					Type:        "virtualbox-iso.ubuntu-1204",
-					BuilderType: "virtualbox-iso",
-					Prepared:    true,
-					Builder:     emptyMockBuilder,
+					BuildName:     "build-name-test",
+					Type:          "virtualbox-iso.ubuntu-1204",
+					BuilderType:   "virtualbox-iso",
+					Prepared:      true,
+					Builder:       emptyMockBuilder,
+					SensitiveVars: []string{},
 					Provisioners: []packer.CoreBuildProvisioner{
 						{
 							PName: "build-name-test",
@@ -692,6 +717,7 @@ func TestParse_build(t *testing.T) {
 				},
 			},
 			false,
+			nil,
 		},
 	}
 	testParse(t, tests)

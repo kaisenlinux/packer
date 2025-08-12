@@ -46,6 +46,7 @@ func (c *ConsoleCommand) ParseArgs(args []string) (*ConsoleArgs, int) {
 	flags := c.Meta.FlagSet("console")
 	flags.Usage = func() { c.Ui.Say(c.Help()) }
 	cfg.AddFlagSets(flags)
+	cfg.MetaArgs.AddFlagSets(flags)
 	if err := flags.Parse(args); err != nil {
 		return &cfg, 1
 	}
@@ -63,7 +64,9 @@ func (c *ConsoleCommand) RunContext(ctx context.Context, cla *ConsoleArgs) int {
 		return ret
 	}
 
-	_ = packerStarter.Initialize(packer.InitializeOptions{})
+	_ = packerStarter.Initialize(packer.InitializeOptions{
+		UseSequential: cla.UseSequential,
+	})
 
 	// Determine if stdin is a pipe. If so, we evaluate directly.
 	if c.StdinPiped() {
@@ -83,9 +86,10 @@ Usage: packer console [options] [TEMPLATE]
   interpolation.
 
 Options:
-  -var 'key=value'       Variable for templates, can be used multiple times.
-  -var-file=path         JSON or HCL2 file containing user variables.
-  -config-type           Set to 'hcl2' to run in HCL2 mode when no file is passed. Defaults to json.
+  -var 'key=value'              Variable for templates, can be used multiple times.
+  -var-file=path                JSON or HCL2 file containing user variables.
+  -config-type                  Set to 'hcl2' to run in HCL2 mode when no file is passed. Defaults to json.
+  -use-sequential-evaluation    Fallback to using a sequential approach for local/datasource evaluation.
 `
 
 	return strings.TrimSpace(helpText)

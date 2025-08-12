@@ -1,15 +1,15 @@
 Author: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
 
---- packer-1.9.4.orig/scripts/build.sh
-+++ packer-1.9.4/scripts/build.sh
-@@ -2,8 +2,8 @@
+--- packer-1.14.1.orig/scripts/build.sh
++++ packer-1.14.1/scripts/build.sh
+@@ -5,8 +5,8 @@
  
  # This script builds the application from source for multiple platforms.
  # Determine the arch/os combos we're building for
 -ALL_XC_ARCH="386 amd64 arm arm64 ppc64le mips mips64 mipsle mipsle64 s390x"
 -ALL_XC_OS="linux darwin windows freebsd openbsd solaris"
-+ALL_XC_ARCH="386 amd64 arm64"
++ALL_XC_ARCH="amd64 arm64"
 +ALL_XC_OS="linux"
- SKIPPED_OSARCH="!darwin/arm !freebsd/arm !freebsd/arm64"
+ SKIPPED_OSARCH="!darwin/arm !freebsd/arm !freebsd/arm64 !darwin/386"
  
  # Exit immediately if a command fails

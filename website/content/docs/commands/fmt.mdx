@@ -1,11 +1,10 @@
 ---
 description: |
-  The `packer fmt` Packer command is used to format HCL2
-  configuration files to a canonical format and style.
-page_title: packer fmt - Commands
+  The `packer fmt` Packer command formats HCL2 configuration files to a canonical format and style to help you prevent coding errors.
+page_title: packer fmt command reference
 ---
 
-# `fmt` Command
+# `packer fmt` command reference
 
 The `packer fmt` Packer command is used to format HCL2 configuration files to
 a canonical format and style. JSON files (.json) are not modified. This command
@@ -33,6 +32,15 @@ my-template.pkr.hcl
 
 ```
 
+Format multiple configuration files, writing the changes back to respective original files.
+
+```shell-session
+$ packer fmt my-template.pkr.hcl my-varfile.pkrvars.hcl
+my-template.pkr.hcl
+my-varfile.pkrvars.hcl
+
+```
+
 Format a configuration file, reading from stdin and writing to stdout.
 
 ```shell-session
@@ -54,5 +62,5 @@ $ cat my-template.pkr.hcl | packer fmt -
 
 - `-` - read formatting changes from stdin and write them to stdout.
 
-- `recursive` Also process files in subdirectories. By default, only the
+- `-recursive` Also process files in subdirectories. By default, only the
   given directory (or current directory) is processed.

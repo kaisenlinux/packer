@@ -102,7 +102,14 @@ func (c *BuildCommand) RunContext(buildCtx context.Context, cla *BuildArgs) int 
 		return ret
 	}
 
-	diags = packerStarter.Initialize(packer.InitializeOptions{})
+	diags = packerStarter.Initialize(packer.InitializeOptions{
+		UseSequential: cla.UseSequential,
+	})
+
+	if packer.PackerUseProto {
+		log.Printf("[TRACE] Using protobuf for communication with plugins")
+	}
+
 	ret = writeDiags(c.Ui, nil, diags)
 	if ret != 0 {
 		return ret
@@ -155,7 +162,7 @@ func (c *BuildCommand) RunContext(buildCtx context.Context, cla *BuildArgs) int 
 		packer.UiColorYellow,
 		packer.UiColorBlue,
 	}
-	buildUis := make(map[packersdk.Build]packersdk.Ui)
+	buildUis := make(map[*packer.CoreBuild]packersdk.Ui)
 	for i := range builds {
 		ui := c.Ui
 		if cla.Color {
@@ -313,6 +320,15 @@ Check that you are using an HCP Ready integration before trying again:
 					artifacts.Unlock()
 				}
 			}
+
+			// If the build succeeded but uploading to HCP failed,
+			// Packer should exit non-zero, so we re-assign the
+			// error to account for this case.
+			if hcperr != nil && err == nil {
+				errs.Lock()
+				errs.m[name] = hcperr
+				errs.Unlock()
+			}
 		}()
 
 		if cla.Debug {
@@ -439,6 +455,7 @@ Options:
   -var-file=path                JSON or HCL2 file containing user variables, can be used multiple times.
   -warn-on-undeclared-var       Display warnings for user variable files containing undeclared variables.
   -ignore-prerelease-plugins    Disable the loading of prerelease plugin binaries (x.y.z-dev).
+  -use-sequential-evaluation    Fallback to using a sequential approach for local/datasource evaluation.
 `
 
 	return strings.TrimSpace(helpText)

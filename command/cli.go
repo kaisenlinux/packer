@@ -66,6 +66,7 @@ type MetaArgs struct {
 	// TODO(azr): in the future, I want to allow passing multiple path to
 	// merge HCL confs together; but this will probably need an RFC first.
 	Path         string
+	Paths        []string
 	Only, Except []string
 	Vars         map[string]string
 	VarFiles     []string
@@ -75,6 +76,12 @@ type MetaArgs struct {
 	// WarnOnUndeclared does not have a common default, as the default varies per sub-command usage.
 	// Refer to individual command FlagSets for usage.
 	WarnOnUndeclaredVar bool
+	// UseSequential specifies to use a sequential/phased approach for
+	// evaluating datasources/locals instead of a DAG.
+	//
+	// This allows users to fall-back to using the approach used by Packer
+	// before the introduction of a DAG in case they run in an impasse/bug.
+	UseSequential bool
 }
 
 func (ba *BuildArgs) AddFlagSets(flags *flag.FlagSet) {
@@ -90,6 +97,7 @@ func (ba *BuildArgs) AddFlagSets(flags *flag.FlagSet) {
 	flags.Var(flagOnError, "on-error", "")
 
 	flags.BoolVar(&ba.MetaArgs.WarnOnUndeclaredVar, "warn-on-undeclared-var", false, "Show warnings for variable files containing undeclared variables.")
+	flags.BoolVar(&ba.MetaArgs.UseSequential, "use-sequential-evaluation", false, "Fallback to using a sequential approach for local/datasource evaluation.")
 
 	flags.BoolVar(&ba.ReleaseOnly, "ignore-prerelease-plugins", false, "Disable the loading of prerelease plugin binaries (x.y.z-dev).")
 
@@ -149,6 +157,10 @@ type PluginsRequiredArgs struct {
 	MetaArgs
 }
 
+func (ca *ConsoleArgs) AddFlagSets(flags *flag.FlagSet) {
+	flags.BoolVar(&ca.MetaArgs.UseSequential, "use-sequential-evaluation", false, "Fallback to using a sequential approach for local/datasource evaluation.")
+}
+
 // ConsoleArgs represents a parsed cli line for a `packer console`
 type ConsoleArgs struct {
 	MetaArgs
@@ -171,6 +183,7 @@ func (va *ValidateArgs) AddFlagSets(flags *flag.FlagSet) {
 	flags.BoolVar(&va.NoWarnUndeclaredVar, "no-warn-undeclared-var", false, "Ignore warnings for variable files containing undeclared variables.")
 	flags.BoolVar(&va.EvaluateDatasources, "evaluate-datasources", false, "evaluate datasources for validation (HCL2 only, may incur costs)")
 	flags.BoolVar(&va.ReleaseOnly, "ignore-prerelease-plugins", false, "Disable the loading of prerelease plugin binaries (x.y.z-dev).")
+	flags.BoolVar(&va.MetaArgs.UseSequential, "use-sequential-evaluation", false, "Fallback to using a sequential approach for local/datasource evaluation.")
 
 	va.MetaArgs.AddFlagSets(flags)
 }
@@ -184,6 +197,7 @@ type ValidateArgs struct {
 }
 
 func (va *InspectArgs) AddFlagSets(flags *flag.FlagSet) {
+	flags.BoolVar(&va.MetaArgs.UseSequential, "use-sequential-evaluation", false, "Fallback to using a sequential approach for local/datasource evaluation.")
 	va.MetaArgs.AddFlagSets(flags)
 }
 
